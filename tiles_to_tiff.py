@@ -79,7 +79,7 @@ def create_geotiff(tile_source, output_dir, geotiff_name, bounding_box, zoom):
     print("Resolving and georeferencing of raster tiles complete")
 
     print("Merging tiles")
-    filename = output_dir + '/' + geotiff_name
+    filename = output_dir + geotiff_name
     merge_tiles(temp_dir + '/*.tif', filename)
     print("Merge complete")
     

@@ -25,31 +25,36 @@ import random
 from contours_to_linestrings import contours_to_linestrings
 from road_templates import score_linestrings
 from tiles_to_tiff import create_geotiff
+from extract_modern_roads import extract_modern_roads
 
-
-EXTENT = [-0.866939,52.839738,-0.828458,52.857283]
-LOCATION_NAME = 'eastwell'
+EXTENT = [-1.333021,53.918548,-1.313999,53.925807]
+LOCATION_NAME = 'walton'
 RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb10k1888/{z}/{x}/{y}.jpg?key=U2vLM8EbXurAd3Gq6C45'
 RASTER_TILE_ZOOM = 17
 
+ROADFILE = 'OS_Open_Roads_LineStrings_WGS84.gpkg'
+
+FIELD_MIN_DIMENSION = 50
+
 DATADIR = './data/'
-OUTPUTDIR = './output/'
+OUTPUTDIR = './output/' + LOCATION_NAME + '/'
 GEOTIFF_NAME = LOCATION_NAME + '.tiff'
 TEMPLATE_SAMPLE = 10  # pixel distance between sample points to test for each candidate LineString
 MATCH_SCORE = .4 # Minimum pass score for structural_similarity in LineString filter
 
-NEW_MAP = True
-SHOW_IMAGES = False
+NEW_MAP = False
+SHOW_IMAGES = True
 
 # Get the current date and time for use in output filenames
 start_time = datetime.datetime.now()
 timestamp = start_time.strftime("%Y-%m-%d_%H-%M-%S")
-FILESTAMP = "_{}_{}.".format(LOCATION_NAME,timestamp)
+FILESTAMP = "_{}.".format(timestamp)
    
 if NEW_MAP:
-    mapfile = create_geotiff (RASTER_TILE_URL, DATADIR, GEOTIFF_NAME, EXTENT, RASTER_TILE_ZOOM)
+    mapfile = create_geotiff (RASTER_TILE_URL, OUTPUTDIR, GEOTIFF_NAME, EXTENT, RASTER_TILE_ZOOM)
+    extract_modern_roads(DATADIR, mapfile, OUTPUTDIR, ROADFILE, LOCATION_NAME)
 else:
-    mapfile = DATADIR + GEOTIFF_NAME
+    mapfile = OUTPUTDIR + GEOTIFF_NAME
 
 # Open the geotiff using rasterio
 with rasterio.open(mapfile) as raster:
@@ -62,11 +67,20 @@ _, result_binary = cv2.threshold(raster_image_gray, 200, 255, cv2.THRESH_BINARY)
 # Erode the image to remove shading, which is typically 2px black dots, 2px apart (specific to OSGB maps c.1900)
 kernel = np.ones((4,4), np.uint8)
 result_binary = cv2.erode(result_binary, kernel, iterations=1)
-    
-result_binary = result_binary > 0
 
+# Now remove large areas such as fields
+print('Removing large white areas ...')    
+kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+eroded_image = cv2.erode(result_binary, kernel)
+diff_image = cv2.subtract(result_binary, eroded_image)
+result_binary = cv2.add(diff_image, eroded_image)
+
+cv2.imshow("Image with Contours", result_binary)
+cv2.waitKey(0)
+    
 # Skeletonize the binary image, find contours, and convert to LineStrings
-print('Skeletonize the binary image and find contours ...')
+print('Skeletonize the binary image and find contours ...')    
+result_binary = result_binary > 0
 skeleton = skeletonize(result_binary)
 skeleton = (skeleton * 255).astype(np.uint8)
 contours, _ = cv2.findContours(skeleton, cv2.RETR_EXTERNAL , cv2.CHAIN_APPROX_NONE)
@@ -80,23 +94,13 @@ if SHOW_IMAGES:
     raster_image_contours = raster_image_gray.copy()
     raster_image_contours = cv2.cvtColor(raster_image_contours, cv2.COLOR_GRAY2BGR)
     cv2.drawContours(raster_image_contours, contours, -1, (0,0,255), 1)
-    # Get the image dimensions
-    height, width = raster_image_contours.shape[:2]
-    # Scale the image
-    raster_image_contours = cv2.resize(raster_image_contours, (width*2, height*2), interpolation = cv2.INTER_LINEAR)
     cv2.imshow("Image with Contours", raster_image_contours)
     cv2.waitKey(0)
-    
-# if SHOW_IMAGES:
-    # print(linestrings)
-    #Save the LineStrings to a shapefile
-    # print('Save the '+str(len(linestrings))+' LineStrings to a shapefile ...')
-    # save_shapefile(linestrings, raster.transform, raster.meta, OUTPUTDIR+'skeleton_paths'+FILESTAMP+'shp')
 
 # Filter sample points from LineStrings based on structural_similarity to roads
 print('Scoring '+str(len(linestrings))+' LineStrings ...')
 roadscores = score_linestrings(linestrings, TEMPLATE_SAMPLE, raster_image_gray)
-# TO DO: filter based on scores and KMeans
+# TO DO: filter based on scores and KMeans; boost scores based on similarity to modern roads
 save_shapefile(linestrings, raster.transform, raster.meta, OUTPUTDIR+'scored_paths'+FILESTAMP+'shp',roadscores)
 
 # Find paths to close gaps in LineStrings
