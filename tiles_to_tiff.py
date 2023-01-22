@@ -79,17 +79,17 @@ def create_geotiff(tile_source, output_dir, geotiff_name, bounding_box, zoom):
     print("Resolving and georeferencing of raster tiles complete")
 
     print("Merging tiles")
-    WGS84_filename = output_dir + '/WGS84_' + geotiff_name
-    merge_tiles(temp_dir + '/*.tif', WGS84_filename)
+    filename = output_dir + '/' + geotiff_name
+    merge_tiles(temp_dir + '/*.tif', filename)
     print("Merge complete")
     
-    input_raster = gdal.Open(WGS84_filename)
-    output_raster = output_dir + '/' + geotiff_name
-    kwargs = {'dstAlpha': True}
-    warp = gdal.Warp(output_raster,input_raster,dstSRS='EPSG:27700',**kwargs)
-    warp = None # Closes the files
+    # input_raster = gdal.Open(WGS84_filename)
+    # output_raster = output_dir + '/' + geotiff_name
+    # kwargs = {'dstAlpha': True}
+    # warp = gdal.Warp(output_raster,input_raster,dstSRS='EPSG:27700',**kwargs)
+    # warp = None # Closes the files
 
     shutil.rmtree(temp_dir)
     
-    return output_raster
+    return filename
     
