@@ -3,10 +3,8 @@ import numpy as np
 import cv2
 from skimage.metrics import structural_similarity
 
-def generate_templates():
+def generate_templates(MAX_ROAD_WIDTH, MIN_ROAD_WIDTH):
     # Template definitions
-    MAX_ROAD_WIDTH = 15  # Pixel width of road between border lines. Should be an odd number
-    MIN_ROAD_WIDTH = 3 # Should be an odd number
     ROAD_BORDER_THICKNESS = 4 # Pixel width of lines defining road edges
     MARGIN = 4 # Typical minimum clear space either side of road
     ROAD_COLOUR = (255, 255, 204)
@@ -29,12 +27,12 @@ def generate_templates():
     
     return template_images
 
-def score_linestrings(linestrings, TEMPLATE_SAMPLE, raster_image_gray):
+def score_linestrings(linestrings, TEMPLATE_SAMPLE, raster_image_gray, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH):
     # Test sample points from extracted LineStrings for structural_similarity to roads, 
     # using templates rotated to the orientation of the LineString at each sample point.
     # Filter out all LineStrings not meeting minimum similarity threshold. 
     
-    templates = generate_templates()
+    templates = generate_templates(MAX_ROAD_WIDTH, MIN_ROAD_WIDTH)
     linestring_attributes = []
     
     for k, (linestring) in enumerate(linestrings):

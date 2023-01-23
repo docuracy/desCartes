@@ -12,6 +12,7 @@ NEXT DEVELOPMENT STEPS
 
 
 """
+import os
 import rasterio
 import numpy as np
 import cv2
@@ -27,14 +28,16 @@ from road_templates import score_linestrings
 from tiles_to_tiff import create_geotiff
 from extract_modern_roads import extract_modern_roads
 
-EXTENT = [-1.333021,53.918548,-1.313999,53.925807]
-LOCATION_NAME = 'walton'
+EXTENT = [-2.339597,51.501169,-2.330225,51.511163]
+LOCATION_NAME = 'tormarton'
 RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb10k1888/{z}/{x}/{y}.jpg?key=U2vLM8EbXurAd3Gq6C45'
 RASTER_TILE_ZOOM = 17
 
 ROADFILE = 'OS_Open_Roads_LineStrings_WGS84.gpkg'
 
-FIELD_MIN_DIMENSION = 50
+
+MAX_ROAD_WIDTH = 15  # Pixel width of road between border lines. Should be an odd number
+MIN_ROAD_WIDTH = 3 # Should be an odd number
 
 DATADIR = './data/'
 OUTPUTDIR = './output/' + LOCATION_NAME + '/'
@@ -42,7 +45,6 @@ GEOTIFF_NAME = LOCATION_NAME + '.tiff'
 TEMPLATE_SAMPLE = 10  # pixel distance between sample points to test for each candidate LineString
 MATCH_SCORE = .4 # Minimum pass score for structural_similarity in LineString filter
 
-NEW_MAP = False
 SHOW_IMAGES = True
 
 # Get the current date and time for use in output filenames
@@ -50,11 +52,11 @@ start_time = datetime.datetime.now()
 timestamp = start_time.strftime("%Y-%m-%d_%H-%M-%S")
 FILESTAMP = "_{}.".format(timestamp)
    
-if NEW_MAP:
+if os.path.exists(OUTPUTDIR + GEOTIFF_NAME):
+    mapfile = OUTPUTDIR + GEOTIFF_NAME
+else:
     mapfile = create_geotiff (RASTER_TILE_URL, OUTPUTDIR, GEOTIFF_NAME, EXTENT, RASTER_TILE_ZOOM)
     extract_modern_roads(DATADIR, mapfile, OUTPUTDIR, ROADFILE, LOCATION_NAME)
-else:
-    mapfile = OUTPUTDIR + GEOTIFF_NAME
 
 # Open the geotiff using rasterio
 with rasterio.open(mapfile) as raster:
@@ -64,19 +66,46 @@ raster_image_gray = cv2.cvtColor(cv2.merge(raster_image[:3]), cv2.COLOR_BGR2GRAY
 ## TO DO: detect and set threshold programmatically
 _, result_binary = cv2.threshold(raster_image_gray, 200, 255, cv2.THRESH_BINARY)
 
-# Erode the image to remove shading, which is typically 2px black dots, 2px apart (specific to OSGB maps c.1900)
-kernel = np.ones((4,4), np.uint8)
-result_binary = cv2.erode(result_binary, kernel, iterations=1)
+# # Now remove freestanding black dots which form boundary lines, typically 8px diameter
+# r = 4
+# size = (2*r+5, 2*r+5)
+# template = np.zeros(size, dtype=np.uint8)
+# cv2.circle(template, (r+2,r+2), r, (255,255,255), -1)
+# cv2.circle(template, (r+2,r+2), r+2, (0,0,0), 1)
+# template = cv2.bitwise_xor(template, np.ones(size, dtype=np.uint8)*255)
+# res = cv2.matchTemplate(result_binary, template, cv2.TM_CCOEFF_NORMED)
+# # Threshold the result to find the locations where the image matches the kernel
+# loc = np.where(res >= 0.6)
+# # Draw circles of 8px diameter at the matching locations
+# for pt in zip(*loc[::-1]):
+#     cv2.circle(result_binary, (pt[0] + r+2, pt[1] + r+2), r, (255, 255, 255), -1)
+#
+# if SHOW_IMAGES:
+#     cv2.imshow("Removing black dots", result_binary)
+#     cv2.waitKey(0)
 
-# Now remove large areas such as fields
+# Now remove large white areas (might be fields)
 print('Removing large white areas ...')    
-kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
-eroded_image = cv2.erode(result_binary, kernel)
-diff_image = cv2.subtract(result_binary, eroded_image)
-result_binary = cv2.add(diff_image, eroded_image)
+kernel_size = int(MAX_ROAD_WIDTH*1.5)
+kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kernel_size, kernel_size))
+eroded_image = cv2.erode(result_binary, kernel, iterations=1)
+dilated_image = cv2.dilate(eroded_image, kernel, iterations=1)
+result_binary = cv2.subtract(result_binary, dilated_image)
 
-cv2.imshow("Image with Contours", result_binary)
-cv2.waitKey(0)
+if SHOW_IMAGES:
+    cv2.imshow("Removing large white areas", result_binary)
+    cv2.waitKey(0)
+
+# Now remove narrow white areas
+print('Removing narrow white areas ...')    
+kernel_size = int(MIN_ROAD_WIDTH*2/3)
+kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kernel_size, kernel_size))
+result_binary = cv2.erode(result_binary, kernel, iterations=1)
+result_binary = cv2.dilate(result_binary, kernel, iterations=1)
+
+if SHOW_IMAGES:
+    cv2.imshow("Removing narrow white areas", result_binary)
+    cv2.waitKey(0)
     
 # Skeletonize the binary image, find contours, and convert to LineStrings
 print('Skeletonize the binary image and find contours ...')    
@@ -99,7 +128,7 @@ if SHOW_IMAGES:
 
 # Filter sample points from LineStrings based on structural_similarity to roads
 print('Scoring '+str(len(linestrings))+' LineStrings ...')
-roadscores = score_linestrings(linestrings, TEMPLATE_SAMPLE, raster_image_gray)
+roadscores = score_linestrings(linestrings, TEMPLATE_SAMPLE, raster_image_gray, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH)
 # TO DO: filter based on scores and KMeans; boost scores based on similarity to modern roads
 save_shapefile(linestrings, raster.transform, raster.meta, OUTPUTDIR+'scored_paths'+FILESTAMP+'shp',roadscores)
 
