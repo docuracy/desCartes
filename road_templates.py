@@ -1,7 +1,10 @@
 import math
+import rasterio
 import numpy as np
 import cv2
 from skimage.metrics import structural_similarity
+from shapely.geometry import Point
+from shapely.ops import nearest_points
 
 def generate_templates(MAX_ROAD_WIDTH, MIN_ROAD_WIDTH):
     # Template definitions
@@ -27,7 +30,7 @@ def generate_templates(MAX_ROAD_WIDTH, MIN_ROAD_WIDTH):
     
     return template_images
 
-def score_linestrings(linestrings, TEMPLATE_SAMPLE, raster_image_gray, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH):
+def score_linestrings(linestrings, TEMPLATE_SAMPLE, raster_image_gray, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, modern_roads, transform):
     # Test sample points from extracted LineStrings for structural_similarity to roads, 
     # using templates rotated to the orientation of the LineString at each sample point.
     # Filter out all LineStrings not meeting minimum similarity threshold. 
@@ -54,12 +57,6 @@ def score_linestrings(linestrings, TEMPLATE_SAMPLE, raster_image_gray, MAX_ROAD_
             clip_region = cv2.warpAffine(clip_region, rot_matrix, (clip_size, clip_size), cv2.INTER_CUBIC)
             clip_region = cv2.getRectSubPix(clip_region, (templates[0].shape[0],templates[0].shape[0]), (clip_size / 2, clip_size / 2))
             
-            # print('Region: '+str(templates[0].shape[0]))
-            # cv2.imshow("Clip region", clip_region)
-            # # cv2.imshow("Template", template)
-            # cv2.waitKey(0)
-            # cv2.destroyAllWindows()
-            
             for j, (template) in enumerate(templates):
                 clip_sample = cv2.getRectSubPix(clip_region, (template.shape[0],template.shape[0]), (clip_region.shape[0] / 2, clip_region.shape[0] / 2))
                 
@@ -74,12 +71,32 @@ def score_linestrings(linestrings, TEMPLATE_SAMPLE, raster_image_gray, MAX_ROAD_
                     if match_score > scores[-1]:
                         scores[len(scores)-1] = match_score
                         widths[len(scores)-1] = template.shape[0]
-                # if match_score > .5:
-                #     print('Score: '+str(match_score)+' | Distance: '+str(i * TEMPLATE_SAMPLE)+' | Angle: '+str(orientation)+' | width: '+str(template.shape[0]))
-                #     cv2.imshow("Sample region", clip_sample)
-                #     # cv2.imshow("Template", template)
-                #     cv2.waitKey(0)
-                #     cv2.destroyAllWindows()
+                        
+            # Now check for proximity to a modern road with similar orientation
+            def azimuth(line, nearest_point):
+                projected_point = line.project(nearest_point)
+                first_point = line.interpolate(projected_point)
+                second_point = line.interpolate(projected_point, normalized=True)
+                dx = second_point.x - first_point.x
+                dy = second_point.y - first_point.y
+                return math.degrees(math.atan2(dy, dx))
+
+            test_point = Point(rasterio.transform.xy(transform, point1.y, point1.x))
+            modern_roads_geometry = modern_roads.geometry.unary_union
+            nearest_point = nearest_points(test_point, modern_roads_geometry)[1]
+        
+            min_distance = float("inf")
+            nearest_line = None
+            nearest_index = -1
+            for k, line in modern_roads.iterrows():
+                distance = nearest_point.distance(line['geometry'])
+                if distance < min_distance:
+                    min_distance = distance
+                    nearest_line = line['geometry']
+                    nearest_index = k
+            modern_orientation = azimuth(nearest_line, nearest_point)
+
+            print(nearest_index, modern_roads['id'][nearest_index], int(orientation), int(modern_orientation), test_point, nearest_point)
         
         mean_score = np.mean(scores)
         mean_width = np.mean(widths)

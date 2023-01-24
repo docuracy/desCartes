@@ -18,7 +18,8 @@ import numpy as np
 import cv2
 import datetime
 from skimage.morphology import skeletonize
-from shapely.geometry import LineString
+import shapely.geometry
+# from shapely.geometry import LineString
 from save_shapefile import save_shapefile
 import matplotlib.pyplot as plt
 import math
@@ -27,9 +28,10 @@ from contours_to_linestrings import contours_to_linestrings
 from road_templates import score_linestrings
 from tiles_to_tiff import create_geotiff
 from extract_modern_roads import extract_modern_roads
+import geopandas as gpd
 
-EXTENT = [-2.339597,51.501169,-2.330225,51.511163]
-LOCATION_NAME = 'tormarton'
+EXTENT = [-4.110772,50.640997,-4.088993,50.650038]
+LOCATION_NAME = 'lydford'
 RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb10k1888/{z}/{x}/{y}.jpg?key=U2vLM8EbXurAd3Gq6C45'
 RASTER_TILE_ZOOM = 17
 
@@ -45,7 +47,7 @@ GEOTIFF_NAME = LOCATION_NAME + '.tiff'
 TEMPLATE_SAMPLE = 10  # pixel distance between sample points to test for each candidate LineString
 MATCH_SCORE = .4 # Minimum pass score for structural_similarity in LineString filter
 
-SHOW_IMAGES = True
+SHOW_IMAGES = False
 
 # Get the current date and time for use in output filenames
 start_time = datetime.datetime.now()
@@ -66,6 +68,10 @@ raster_image_gray = cv2.cvtColor(cv2.merge(raster_image[:3]), cv2.COLOR_BGR2GRAY
 ## TO DO: detect and set threshold programmatically
 _, result_binary = cv2.threshold(raster_image_gray, 200, 255, cv2.THRESH_BINARY)
 
+if SHOW_IMAGES:
+    cv2.imshow("Original raster binary", result_binary)
+    cv2.waitKey(0)
+
 # # Now remove freestanding black dots which form boundary lines, typically 8px diameter
 # r = 4
 # size = (2*r+5, 2*r+5)
@@ -81,8 +87,23 @@ _, result_binary = cv2.threshold(raster_image_gray, 200, 255, cv2.THRESH_BINARY)
 #     cv2.circle(result_binary, (pt[0] + r+2, pt[1] + r+2), r, (255, 255, 255), -1)
 #
 # if SHOW_IMAGES:
-#     cv2.imshow("Removing black dots", result_binary)
+#     cv2.imshow("Removed black dots", result_binary)
 #     cv2.waitKey(0)
+
+# Find small black shapes in the image and turn them white
+print('Removing small black shapes ...')    
+MIN_AREA = 20 * (MIN_ROAD_WIDTH ** 2)
+result_binary = cv2.bitwise_not(result_binary)
+contours, _ = cv2.findContours(result_binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+for contour in contours:
+    if cv2.isContourConvex(contour): # Check if the contour is closed
+        if cv2.contourArea(contour) < MIN_AREA:
+            cv2.drawContours(result_binary, [contour], 0, (0, 0, 0), -1)
+result_binary = cv2.bitwise_not(result_binary)
+
+if SHOW_IMAGES:
+    cv2.imshow("Removed small black shapes", result_binary)
+    cv2.waitKey(0)
 
 # Now remove large white areas (might be fields)
 print('Removing large white areas ...')    
@@ -93,7 +114,7 @@ dilated_image = cv2.dilate(eroded_image, kernel, iterations=1)
 result_binary = cv2.subtract(result_binary, dilated_image)
 
 if SHOW_IMAGES:
-    cv2.imshow("Removing large white areas", result_binary)
+    cv2.imshow("Removed large white areas", result_binary)
     cv2.waitKey(0)
 
 # Now remove narrow white areas
@@ -104,7 +125,20 @@ result_binary = cv2.erode(result_binary, kernel, iterations=1)
 result_binary = cv2.dilate(result_binary, kernel, iterations=1)
 
 if SHOW_IMAGES:
-    cv2.imshow("Removing narrow white areas", result_binary)
+    cv2.imshow("Removed narrow white areas", result_binary)
+    cv2.waitKey(0)
+
+# Find small white shapes in the image and turn them black
+print('Removing small white shapes ...')    
+MIN_AREA = 200 * (MIN_ROAD_WIDTH ** 2)
+contours, _ = cv2.findContours(result_binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+for contour in contours:
+    if cv2.isContourConvex(contour): # Check if the contour is closed
+        if cv2.contourArea(contour) < MIN_AREA:
+            cv2.drawContours(result_binary, [contour], 0, (0, 0, 0), -1)
+
+if SHOW_IMAGES:
+    cv2.imshow("Removed small white shapes", result_binary)
     cv2.waitKey(0)
     
 # Skeletonize the binary image, find contours, and convert to LineStrings
@@ -126,9 +160,15 @@ if SHOW_IMAGES:
     cv2.imshow("Image with Contours", raster_image_contours)
     cv2.waitKey(0)
 
-# Filter sample points from LineStrings based on structural_similarity to roads
+# Score sample points from LineStrings based on structural_similarity to roads and proximity to modern roads
 print('Scoring '+str(len(linestrings))+' LineStrings ...')
-roadscores = score_linestrings(linestrings, TEMPLATE_SAMPLE, raster_image_gray, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH)
+
+# Open the modern roads shapefile and read in the LineStrings
+modern_roads = gpd.read_file(OUTPUTDIR + 'OS_Open_Roads_LineStrings_WGS84.shp')
+# print(modern_roads['id'])
+# print(modern_roads['geometry'])
+
+roadscores = score_linestrings(linestrings, TEMPLATE_SAMPLE, raster_image_gray, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, modern_roads, raster.transform)
 # TO DO: filter based on scores and KMeans; boost scores based on similarity to modern roads
 save_shapefile(linestrings, raster.transform, raster.meta, OUTPUTDIR+'scored_paths'+FILESTAMP+'shp',roadscores)
 
