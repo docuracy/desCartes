@@ -21,6 +21,7 @@ from skimage.morphology import skeletonize
 from save_shapefile import save_shapefile
 import matplotlib.pyplot as plt
 import math
+import geopandas as gpd
 from contours_to_linestrings import contours_to_linestrings
 from road_templates import score_linestrings
 from tiles_to_tiff import create_geotiff
