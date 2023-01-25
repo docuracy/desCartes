@@ -22,7 +22,26 @@ import shapely.geometry
 import rasterio
 import fiona
 
-def save_shapefile(linestrings, transformation, metadata, filename, attributes = False):
+def save_shapefile(linestrings, transformation, metadata, filename, attributes = False, modern_linklines = False):
+    if not modern_linklines == False:
+        # Set the output shapefile schema
+        schema = {
+            'geometry': 'LineString',
+            'properties': {
+            }
+        }
+        # Open the output shapefile for writing
+        with fiona.open(filename.replace('.shp','_links.shp'), 'w', crs='EPSG:4326', driver='ESRI Shapefile', schema=schema) as dst:
+            # Iterate through the linestrings_transformed and write them to the shapefile
+            for linestring in modern_linklines:
+                # Create a record for the linestring
+                record = {
+                    'geometry': shapely.geometry.mapping(linestring),
+                    'properties': {}
+                }
+                # Write the record to the shapefile
+                dst.write(record)
+    
     # Initialize an empty list to store the transformed linestrings
     linestrings_transformed = []
     # Iterate through the linestrings
@@ -45,7 +64,9 @@ def save_shapefile(linestrings, transformation, metadata, filename, attributes =
         'geometry': 'LineString',
         'properties': {
             'score': 'float',
-            'width': 'float'
+            'width': 'float',
+            # 'modernity': 'float'
+            'modernity': 'str'
         }
     }
 

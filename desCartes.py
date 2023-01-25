@@ -18,25 +18,21 @@ import numpy as np
 import cv2
 import datetime
 from skimage.morphology import skeletonize
-import shapely.geometry
-# from shapely.geometry import LineString
 from save_shapefile import save_shapefile
 import matplotlib.pyplot as plt
 import math
-import random
 from contours_to_linestrings import contours_to_linestrings
 from road_templates import score_linestrings
 from tiles_to_tiff import create_geotiff
 from extract_modern_roads import extract_modern_roads
-import geopandas as gpd
 
-EXTENT = [-4.110772,50.640997,-4.088993,50.650038]
-LOCATION_NAME = 'lydford'
+EXTENT = [-0.451884,52.479931,-0.441813,52.484344]
+LOCATION_NAME = 'ashton'
 RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb10k1888/{z}/{x}/{y}.jpg?key=U2vLM8EbXurAd3Gq6C45'
 RASTER_TILE_ZOOM = 17
 
 ROADFILE = 'OS_Open_Roads_LineStrings_WGS84.gpkg'
-
+MAX_MODERN_OFFSET = 300 # Maximum allowable offset (degrees*1000, approximately metres)
 
 MAX_ROAD_WIDTH = 15  # Pixel width of road between border lines. Should be an odd number
 MIN_ROAD_WIDTH = 3 # Should be an odd number
@@ -165,12 +161,10 @@ print('Scoring '+str(len(linestrings))+' LineStrings ...')
 
 # Open the modern roads shapefile and read in the LineStrings
 modern_roads = gpd.read_file(OUTPUTDIR + 'OS_Open_Roads_LineStrings_WGS84.shp')
-# print(modern_roads['id'])
-# print(modern_roads['geometry'])
 
-roadscores = score_linestrings(linestrings, TEMPLATE_SAMPLE, raster_image_gray, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, modern_roads, raster.transform)
+roadscores, modern_linklines = score_linestrings(linestrings, TEMPLATE_SAMPLE, raster_image_gray, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, modern_roads, raster.transform, MAX_MODERN_OFFSET)
 # TO DO: filter based on scores and KMeans; boost scores based on similarity to modern roads
-save_shapefile(linestrings, raster.transform, raster.meta, OUTPUTDIR+'scored_paths'+FILESTAMP+'shp',roadscores)
+save_shapefile(linestrings, raster.transform, raster.meta, OUTPUTDIR+'scored_paths'+FILESTAMP+'shp', roadscores, modern_linklines)
 
 # Find paths to close gaps in LineStrings
 ## (TO DO)
