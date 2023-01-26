@@ -104,13 +104,6 @@ def score_linestrings(linestrings, TEMPLATE_SAMPLE, raster_image_gray, MAX_ROAD_
 
         mean_score = np.nan_to_num(np.mean(scores))
         mean_width = np.nan_to_num(np.mean(widths))
-
-        
-        
-        # Print the results
-        # print("Most common closest_line.id: ", most_common_id)
-        # print("Mean closest_distance: ", mean_distance)
-        # print("Mean bearing_difference: ", mean_bearing_difference)
         
         if modern:
             # Count the occurrences of the closest_line.id values

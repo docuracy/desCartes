@@ -9,6 +9,12 @@
 """
 NEXT DEVELOPMENT STEPS
 
+Join fragments that share a modernity id.
+Snap singular endpoints to other endpoints if nearby and merge to single LineString, 
+otherwise add intermediate point to intersected line and move original endpoint to 
+that point.
+Try on OS drawings via LoL XYZ tiles.
+Try also https://commons.wikimedia.org/wiki/Gallery:Ordnance_Survey_1st_series_1:63360
 
 
 """
@@ -26,6 +32,7 @@ from contours_to_linestrings import contours_to_linestrings
 from road_templates import score_linestrings
 from tiles_to_tiff import create_geotiff
 from extract_modern_roads import extract_modern_roads
+from patch_linestrings import merge_groups
 
 EXTENT = [-0.451884,52.479931,-0.441813,52.484344]
 LOCATION_NAME = 'ashton'
@@ -34,6 +41,7 @@ RASTER_TILE_ZOOM = 17
 
 ROADFILE = 'OS_Open_Roads_LineStrings_WGS84.gpkg'
 MAX_MODERN_OFFSET = 300 # Maximum allowable offset (degrees*1000, approximately metres)
+MAX_GAP_CLOSURE = 3000 / 1000000 # Maximum gap to be closed on matched modernity_id (degrees: approximately metres / 1000000)
 
 MAX_ROAD_WIDTH = 15  # Pixel width of road between border lines. Should be an odd number
 MIN_ROAD_WIDTH = 3 # Should be an odd number
@@ -164,11 +172,8 @@ print('Scoring '+str(len(linestrings))+' LineStrings ...')
 modern_roads = gpd.read_file(OUTPUTDIR + 'OS_Open_Roads_LineStrings_WGS84.shp')
 
 roadscores, modern_linklines = score_linestrings(linestrings, TEMPLATE_SAMPLE, raster_image_gray, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, modern_roads, raster.transform, MAX_MODERN_OFFSET)
-# TO DO: filter based on scores and KMeans; boost scores based on similarity to modern roads
+linestrings, roadscores = merge_groups(linestrings, roadscores, MAX_GAP_CLOSURE)
 save_shapefile(linestrings, raster.transform, raster.meta, OUTPUTDIR+'scored_paths'+FILESTAMP+'shp', roadscores, modern_linklines)
-
-# Find paths to close gaps in LineStrings
-## (TO DO)
 
 elapsed_time = datetime.datetime.now() - start_time
 elapsed_time_seconds = elapsed_time.total_seconds()
