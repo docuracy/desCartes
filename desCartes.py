@@ -42,8 +42,8 @@ from tiles_to_tiff import create_geotiff
 from extract_modern_roads import extract_modern_roads
 from patch_linestrings import merge_groups
 
-EXTENT = [-0.451884,52.479931,-0.441813,52.484344]
-LOCATION_NAME = 'tormarton'
+EXTENT = [-2.3338966,51.5078771,-2.3331382,51.5081926]
+LOCATION_NAME = 'tormarton-tiny-test'
 RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb10k1888/{z}/{x}/{y}.jpg?key=U2vLM8EbXurAd3Gq6C45'
 RASTER_TILE_ZOOM = 17
 
@@ -61,7 +61,7 @@ TEMPLATE_SAMPLE = 10  # pixel distance between sample points to test for each ca
 MATCH_SCORE = .4 # Minimum pass score for structural_similarity in LineString filter
 FILTER_SCORE = 25 # Reject road candidates failing to meet this minimum score
 
-SHOW_IMAGES = False
+SHOW_IMAGES = True
 
 # Get the current date and time for use in output filenames
 start_time = datetime.datetime.now()
@@ -116,7 +116,43 @@ for contour in contours:
 result_binary = cv2.bitwise_not(result_binary)
 
 if SHOW_IMAGES:
-    cv2.imshow("Removed small black shapes", result_binary)
+    raster_image_contours = cv2.cvtColor(result_binary, cv2.COLOR_GRAY2BGR)
+    cv2.drawContours(raster_image_contours, contours, -1, (0,0,255), 1)
+    cv2.imshow("20 Removed small black shapes", raster_image_contours)
+    cv2.waitKey(0)
+
+# Find small black shapes in the image and turn them white
+print('Removing small black shapes ...')    
+MIN_AREA = 500 * (MIN_ROAD_WIDTH ** 2)
+result_binary = cv2.bitwise_not(result_binary)
+contours, _ = cv2.findContours(result_binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+for contour in contours:
+    if cv2.isContourConvex(contour): # Check if the contour is closed
+        if cv2.contourArea(contour) < MIN_AREA:
+            cv2.drawContours(result_binary, [contour], 0, (0, 0, 0), -1)
+result_binary = cv2.bitwise_not(result_binary)
+
+if SHOW_IMAGES:
+    raster_image_contours = cv2.cvtColor(result_binary, cv2.COLOR_GRAY2BGR)
+    cv2.drawContours(raster_image_contours, contours, -1, (0,0,255), 1)
+    cv2.imshow("500 Removed small black shapes", raster_image_contours)
+    cv2.waitKey(0)
+
+# Find small black shapes in the image and turn them white
+print('Removing small black shapes ...')    
+MIN_AREA = 2500 * (MIN_ROAD_WIDTH ** 2)
+result_binary = cv2.bitwise_not(result_binary)
+contours, _ = cv2.findContours(result_binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+for contour in contours:
+    if cv2.isContourConvex(contour): # Check if the contour is closed
+        if cv2.contourArea(contour) < MIN_AREA:
+            cv2.drawContours(result_binary, [contour], 0, (0, 0, 0), -1)
+result_binary = cv2.bitwise_not(result_binary)
+
+if SHOW_IMAGES:
+    raster_image_contours = cv2.cvtColor(result_binary, cv2.COLOR_GRAY2BGR)
+    cv2.drawContours(raster_image_contours, contours, -1, (0,0,255), 1)
+    cv2.imshow("2500 Removed small black shapes", raster_image_contours)
     cv2.waitKey(0)
 
 # Now remove large white areas (might be fields)

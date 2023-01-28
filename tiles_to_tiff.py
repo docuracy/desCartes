@@ -44,10 +44,11 @@ def fetch_tile(x, y, z, tile_source):
     return path
 
 
-def merge_tiles(input_pattern, output_path):
+def merge_tiles(input_pattern, output_path, extent):
     vrt_path = temp_dir + "/tiles.vrt"
     gdal.BuildVRT(vrt_path, glob.glob(input_pattern))
-    gdal.Translate(output_path, vrt_path)
+    print(extent)
+    gdal.Translate(output_path, vrt_path, outputSRS='EPSG:4326', projWin=[extent[0], extent[3], extent[2], extent[1]])
 
 
 def georeference_raster_tile(x, y, z, path):
@@ -94,7 +95,7 @@ def create_geotiff(tile_source, output_dir, geotiff_name, bounding_box, zoom):
 
     print("Merging tiles")
     filename = output_dir + geotiff_name
-    merge_tiles(temp_dir + '/*.tif', filename)
+    merge_tiles(temp_dir + '/*.tif', filename, bounding_box)
     print("Merge complete")
     
     # input_raster = gdal.Open(WGS84_filename)
