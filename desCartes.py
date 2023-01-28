@@ -92,7 +92,7 @@ def erase_areas(image, factor, closed = False, black = False, contours = True, s
     colour = 'black' if black else 'white'
     form = 'shapes' if contours else 'areas'
     image = cv2.bitwise_not(image) if black else image
-    size = factor * (MIN_ROAD_WIDTH ** 2) if contours else int(factor * MAX_ROAD_WIDTH)
+    size = factor * (MIN_ROAD_WIDTH ** 2) if contours else int(factor)
     if contours:
         contours, _ = cv2.findContours(image, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
         for contour in contours:
@@ -102,7 +102,7 @@ def erase_areas(image, factor, closed = False, black = False, contours = True, s
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (size, size))
         eroded_image = cv2.erode(image, kernel, iterations=1)
         dilated_image = cv2.dilate(eroded_image, kernel, iterations=1)
-        image = cv2.subtract(image, dilated_image) if subtract else image
+        image = cv2.subtract(image, dilated_image) if subtract else dilated_image
     image = cv2.bitwise_not(image) if black else image
     message = 'Removed ' + colour + ' ' + form + ': size = ' + str(size)
     print(message)
@@ -120,10 +120,11 @@ def erase_areas(image, factor, closed = False, black = False, contours = True, s
     return image
 
 result_binary = erase_areas(result_binary, 500) # Erase white shapes
+# result_binary = erase_areas(result_binary, 2/3, black = True, contours = False, subtract = True) # Erase black areas
 result_binary = erase_areas(result_binary, 200, black = True) # Erase black shapes
-result_binary = erase_areas(result_binary, 1.5, contours = False, subtract = True) # Erase large white areas
-result_binary = erase_areas(result_binary, 2/3, contours = False) # Erase narrow white areas
-result_binary = erase_areas(result_binary, 200, closed = True) # Erase white shapes
+result_binary = erase_areas(result_binary, 1.5 * MAX_ROAD_WIDTH, contours = False, subtract = True) # Erase large white areas
+result_binary = erase_areas(result_binary, 2/3 * MIN_ROAD_WIDTH, contours = False) # Erase narrow white areas
+result_binary = erase_areas(result_binary, 500) # Erase white shapes
     
 # Skeletonize the binary image, find contours, and convert to LineStrings
 print('Skeletonize the binary image and find contours ...')    
