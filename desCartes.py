@@ -35,7 +35,7 @@ from extract_modern_roads import extract_modern_roads
 from patch_linestrings import merge_groups
 
 EXTENT = [-0.451884,52.479931,-0.441813,52.484344]
-LOCATION_NAME = 'ashton'
+LOCATION_NAME = 'tormarton'
 RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb10k1888/{z}/{x}/{y}.jpg?key=U2vLM8EbXurAd3Gq6C45'
 RASTER_TILE_ZOOM = 17
 
@@ -51,6 +51,7 @@ OUTPUTDIR = './output/' + LOCATION_NAME + '/'
 GEOTIFF_NAME = LOCATION_NAME + '.tiff'
 TEMPLATE_SAMPLE = 10  # pixel distance between sample points to test for each candidate LineString
 MATCH_SCORE = .4 # Minimum pass score for structural_similarity in LineString filter
+FILTER_SCORE = 25 # Reject road candidates failing to meet this minimum score
 
 SHOW_IMAGES = False
 
@@ -172,7 +173,7 @@ print('Scoring '+str(len(linestrings))+' LineStrings ...')
 modern_roads = gpd.read_file(OUTPUTDIR + 'OS_Open_Roads_LineStrings_WGS84.shp')
 
 roadscores, modern_linklines = score_linestrings(linestrings, TEMPLATE_SAMPLE, raster_image_gray, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, modern_roads, raster.transform, MAX_MODERN_OFFSET)
-linestrings, roadscores = merge_groups(linestrings, roadscores, MAX_GAP_CLOSURE)
+linestrings, roadscores = merge_groups(linestrings, roadscores, MAX_GAP_CLOSURE, modern_roads, raster.transform, FILTER_SCORE)
 save_shapefile(linestrings, raster.transform, raster.meta, OUTPUTDIR+'scored_paths'+FILESTAMP+'shp', roadscores, modern_linklines)
 
 elapsed_time = datetime.datetime.now() - start_time

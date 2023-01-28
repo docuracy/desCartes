@@ -47,7 +47,8 @@ def georeference_raster_tile(x, y, z, path):
     
     gdal.Translate(os.path.join(temp_dir, f'{temp_dir}/{x}_{y}_{z}.tif'),
                    path,
-                   outputSRS='EPSG:4326',
+                   # outputSRS='EPSG:3857',
+                   outputSRS='EPSG:4326', # Longitude, Latitude
                    #outputSRS='EPSG:27700',
                    outputBounds=bounds)
 
