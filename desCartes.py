@@ -43,7 +43,7 @@ from extract_modern_roads import extract_modern_roads
 from patch_linestrings import merge_groups
 
 EXTENT = [-2.3338966,51.5078771,-2.3331382,51.5081926]
-LOCATION_NAME = 'tormarton-tiny-test'
+LOCATION_NAME = 'tormarton'
 RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb10k1888/{z}/{x}/{y}.jpg?key=U2vLM8EbXurAd3Gq6C45'
 RASTER_TILE_ZOOM = 17
 
@@ -86,110 +86,44 @@ if SHOW_IMAGES:
     cv2.imshow("Original raster binary", result_binary)
     cv2.waitKey(0)
 
-# # Now remove freestanding black dots which form boundary lines, typically 8px diameter
-# r = 4
-# size = (2*r+5, 2*r+5)
-# template = np.zeros(size, dtype=np.uint8)
-# cv2.circle(template, (r+2,r+2), r, (255,255,255), -1)
-# cv2.circle(template, (r+2,r+2), r+2, (0,0,0), 1)
-# template = cv2.bitwise_xor(template, np.ones(size, dtype=np.uint8)*255)
-# res = cv2.matchTemplate(result_binary, template, cv2.TM_CCOEFF_NORMED)
-# # Threshold the result to find the locations where the image matches the kernel
-# loc = np.where(res >= 0.6)
-# # Draw circles of 8px diameter at the matching locations
-# for pt in zip(*loc[::-1]):
-#     cv2.circle(result_binary, (pt[0] + r+2, pt[1] + r+2), r, (255, 255, 255), -1)
-#
-# if SHOW_IMAGES:
-#     cv2.imshow("Removed black dots", result_binary)
-#     cv2.waitKey(0)
+window = 0
+def erase_areas(image, factor, closed = False, black = False, contours = True, subtract = False):
+    global window
+    colour = 'black' if black else 'white'
+    form = 'shapes' if contours else 'areas'
+    image = cv2.bitwise_not(image) if black else image
+    size = factor * (MIN_ROAD_WIDTH ** 2) if contours else int(factor * MAX_ROAD_WIDTH)
+    if contours:
+        contours, _ = cv2.findContours(image, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+        for contour in contours:
+            if (cv2.isContourConvex(contour) or closed == False) and cv2.contourArea(contour) < size:
+                cv2.drawContours(image, [contour], 0, (0, 0, 0), -1)
+    else:
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (size, size))
+        eroded_image = cv2.erode(image, kernel, iterations=1)
+        dilated_image = cv2.dilate(eroded_image, kernel, iterations=1)
+        image = cv2.subtract(image, dilated_image) if subtract else image
+    image = cv2.bitwise_not(image) if black else image
+    message = 'Removed ' + colour + ' ' + form + ': size = ' + str(size)
+    print(message)
+    
+    if SHOW_IMAGES:
+        if contours:
+            raster_image_contours = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+            cv2.drawContours(raster_image_contours, contours, -1, (0,0,255), 1)
+            cv2.imshow(message + ' [' + str(window) + ']', raster_image_contours)
+        else:
+            cv2.imshow(message + ' [' + str(window) + ']', image)
+        cv2.waitKey(0)
+        window += 1
+        
+    return image
 
-# Find small black shapes in the image and turn them white
-print('Removing small black shapes ...')    
-MIN_AREA = 20 * (MIN_ROAD_WIDTH ** 2)
-result_binary = cv2.bitwise_not(result_binary)
-contours, _ = cv2.findContours(result_binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-for contour in contours:
-    if cv2.isContourConvex(contour): # Check if the contour is closed
-        if cv2.contourArea(contour) < MIN_AREA:
-            cv2.drawContours(result_binary, [contour], 0, (0, 0, 0), -1)
-result_binary = cv2.bitwise_not(result_binary)
-
-if SHOW_IMAGES:
-    raster_image_contours = cv2.cvtColor(result_binary, cv2.COLOR_GRAY2BGR)
-    cv2.drawContours(raster_image_contours, contours, -1, (0,0,255), 1)
-    cv2.imshow("20 Removed small black shapes", raster_image_contours)
-    cv2.waitKey(0)
-
-# Find small black shapes in the image and turn them white
-print('Removing small black shapes ...')    
-MIN_AREA = 500 * (MIN_ROAD_WIDTH ** 2)
-result_binary = cv2.bitwise_not(result_binary)
-contours, _ = cv2.findContours(result_binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-for contour in contours:
-    if cv2.isContourConvex(contour): # Check if the contour is closed
-        if cv2.contourArea(contour) < MIN_AREA:
-            cv2.drawContours(result_binary, [contour], 0, (0, 0, 0), -1)
-result_binary = cv2.bitwise_not(result_binary)
-
-if SHOW_IMAGES:
-    raster_image_contours = cv2.cvtColor(result_binary, cv2.COLOR_GRAY2BGR)
-    cv2.drawContours(raster_image_contours, contours, -1, (0,0,255), 1)
-    cv2.imshow("500 Removed small black shapes", raster_image_contours)
-    cv2.waitKey(0)
-
-# Find small black shapes in the image and turn them white
-print('Removing small black shapes ...')    
-MIN_AREA = 2500 * (MIN_ROAD_WIDTH ** 2)
-result_binary = cv2.bitwise_not(result_binary)
-contours, _ = cv2.findContours(result_binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-for contour in contours:
-    if cv2.isContourConvex(contour): # Check if the contour is closed
-        if cv2.contourArea(contour) < MIN_AREA:
-            cv2.drawContours(result_binary, [contour], 0, (0, 0, 0), -1)
-result_binary = cv2.bitwise_not(result_binary)
-
-if SHOW_IMAGES:
-    raster_image_contours = cv2.cvtColor(result_binary, cv2.COLOR_GRAY2BGR)
-    cv2.drawContours(raster_image_contours, contours, -1, (0,0,255), 1)
-    cv2.imshow("2500 Removed small black shapes", raster_image_contours)
-    cv2.waitKey(0)
-
-# Now remove large white areas (might be fields)
-print('Removing large white areas ...')    
-kernel_size = int(MAX_ROAD_WIDTH*1.5)
-kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kernel_size, kernel_size))
-eroded_image = cv2.erode(result_binary, kernel, iterations=1)
-dilated_image = cv2.dilate(eroded_image, kernel, iterations=1)
-result_binary = cv2.subtract(result_binary, dilated_image)
-
-if SHOW_IMAGES:
-    cv2.imshow("Removed large white areas", result_binary)
-    cv2.waitKey(0)
-
-# Now remove narrow white areas
-print('Removing narrow white areas ...')    
-kernel_size = int(MIN_ROAD_WIDTH*2/3)
-kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kernel_size, kernel_size))
-result_binary = cv2.erode(result_binary, kernel, iterations=1)
-result_binary = cv2.dilate(result_binary, kernel, iterations=1)
-
-if SHOW_IMAGES:
-    cv2.imshow("Removed narrow white areas", result_binary)
-    cv2.waitKey(0)
-
-# Find small white shapes in the image and turn them black
-print('Removing small white shapes ...')    
-MIN_AREA = 200 * (MIN_ROAD_WIDTH ** 2)
-contours, _ = cv2.findContours(result_binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-for contour in contours:
-    if cv2.isContourConvex(contour): # Check if the contour is closed
-        if cv2.contourArea(contour) < MIN_AREA:
-            cv2.drawContours(result_binary, [contour], 0, (0, 0, 0), -1)
-
-if SHOW_IMAGES:
-    cv2.imshow("Removed small white shapes", result_binary)
-    cv2.waitKey(0)
+result_binary = erase_areas(result_binary, 500) # Erase white shapes
+result_binary = erase_areas(result_binary, 200, black = True) # Erase black shapes
+result_binary = erase_areas(result_binary, 1.5, contours = False, subtract = True) # Erase large white areas
+result_binary = erase_areas(result_binary, 2/3, contours = False) # Erase narrow white areas
+result_binary = erase_areas(result_binary, 200, closed = True) # Erase white shapes
     
 # Skeletonize the binary image, find contours, and convert to LineStrings
 print('Skeletonize the binary image and find contours ...')    
