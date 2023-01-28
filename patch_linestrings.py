@@ -1,9 +1,34 @@
+'''
+@author: Stephen Gadd, Docuracy Ltd, UK
+
+This code defines a function called find_shortest_path() that takes as input a list of 
+linestrings, a modernity, a score, a width, a gap size, modern roads, and a transform. 
+The function first selects a modern road by matching its 'id' attribute with the input 
+modernity, and then it reprojects the endpoints of the modern road into the raster pixel 
+CRS. Next, it creates a directed graph and adds nodes to the graph representing each 
+endpoint of the linestrings, and adds edges between the nodes that represent the 
+linestrings. The function then finds the closest endpoint to start_point and end_point 
+and finds the shortest path between the closest start and closest end. Finally, it 
+initializes variables to store the sum of scores and widths and the count of edges, and 
+adds the score and width values of the edges to the running sum.
+
+The merge_groups function takes as input a list of linestrings, a list of scores, a 
+list of widths, a gap size, and a dataframe of modern roads. It starts by merging all 
+the linestrings in the input list into a single MultiLineString object. Then, it iterates 
+through the modern roads in the input dataframe, and for each modern road, it finds the 
+shortest path between the start and end points of the modern road, using the merged 
+linestring as the graph for the path finding algorithm. The function returns a 
+MultiLineString object containing all the shortest paths found, along with a list of 
+tuples containing the ID of the modern road, the sum of scores of the edges in the path, 
+and the sum of widths of the edges in the path.
+
+'''
+
 import networkx as nx
 from shapely.geometry import Point, LineString, MultiLineString
 from shapely.ops import linemerge
 import itertools
 from collections import defaultdict
-from pickle import NONE
 import rasterio
 
 def find_shortest_path(linestrings, modernity, score, width, gap_size, modern_roads, transform):

@@ -1,3 +1,16 @@
+'''
+@author: Stephen Gadd, Docuracy Ltd, UK
+Adapted from https://github.com/jimutt/tiles-to-tiff
+
+This script is used to create a geotiff file from a tile source. It uses the 
+GDAL library to fetch, georeference and merge tiles of an image. The script 
+takes in the tile source, output directory, geotiff name, bounding box and 
+zoom level as input. The bounding box is used to calculate the range of x and 
+y coordinates of the tiles that need to be fetched. Once all the tiles are 
+fetched, they are georeferenced and merged to create a single geotiff file.
+
+'''
+
 import urllib.request
 import os
 import glob

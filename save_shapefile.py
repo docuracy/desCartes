@@ -1,12 +1,6 @@
-# -*- coding: utf-8 -*-
 """
-
 @author: Stephen Gadd, Docuracy Ltd, UK
 
-"""
-
-######################################################################################
-"""
 This code takes a list of linestrings linestrings, a rasterio transformation, 
 and a shapefile filename filename as input. It iterates through the linestrings, 
 converts them to Shapely LineString objects, transforms the coordinates using the 

@@ -1,3 +1,10 @@
+'''
+@author: Stephen Gadd, Docuracy Ltd, UK
+
+The function extract_modern_roads extracts the LineStrings from a shapefile 
+which lie within the extent of a given geotiff.
+
+'''
 
 import subprocess
 from shapely.geometry import Polygon

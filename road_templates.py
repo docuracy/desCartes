@@ -1,3 +1,17 @@
+'''
+@author: Stephen Gadd, Docuracy Ltd, UK
+
+This code is for a program that takes in a raster image, and a set of linestrings 
+and then scores the linestrings based on how similar they are to roads in the raster 
+image. The program uses template matching to compare the linestrings to the roads 
+in the raster image, and it filters out linestrings that do not meet a minimum 
+similarity threshold. The program first generates a set of templates that represent 
+different widths of roads, and then it rotates the templates to match the orientation 
+of the linestrings. The program also compares the linestrings to a set of modern 
+roads and returns a score based on how closely they match. It uses various libraries 
+such as math, rasterio, numpy, cv2, skimage, shapely, geopandas, rtree.
+
+'''
 import math
 import rasterio
 import numpy as np
