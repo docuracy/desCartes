@@ -1,23 +1,31 @@
-# -*- coding: utf-8 -*-
-"""
-
+'''
 @author: Stephen Gadd, Docuracy Ltd, UK
 
-"""
+desCartes recognises roads on old maps, and converts them to vector lines that can be 
+used in GIS applications and historical transport network analysis.
 
-######################################################################################
-"""
+For any given map extent (bounding coordinates), desCartes first generates a a 
+georeferenced map image (geotiff), and then processes the image to extract candidate 
+road lines. These lines are then tested for similarity against an idealised road template, 
+and matched by proximity and orientation to modern road vectors. Gaps in the road lines 
+are then filled (and junctions made) where appropriate, and each line is assigned a 
+certainty score and (where possible) the id of the matching modern road segment.
+
+desCartes is pre-configured for use with the National Library of Scotland's 19th-century 
+6":1 mile GB Ordnance Survey map tiles served by MapTiler Cloud, and with the modern 
+Ordnance Survey Open Roads vector dataset, but might be adapted to suit other maps.
+
 NEXT DEVELOPMENT STEPS
 
 Join fragments that share a modernity id.
 Snap singular endpoints to other endpoints if nearby and merge to single LineString, 
 otherwise add intermediate point to intersected line and move original endpoint to 
 that point.
+
 Try on OS drawings via LoL XYZ tiles.
 Try also https://commons.wikimedia.org/wiki/Gallery:Ordnance_Survey_1st_series_1:63360
 
-
-"""
+'''
 import os
 import rasterio
 import numpy as np

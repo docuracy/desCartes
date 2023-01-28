@@ -1,3 +1,8 @@
+'''
+Source: https://github.com/jimutt/tiles-to-tiff
+
+'''
+
 from math import log, tan, radians, cos, pi, floor, degrees, atan, sinh
 
 
