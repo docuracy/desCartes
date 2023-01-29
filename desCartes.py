@@ -42,12 +42,14 @@ from tiles_to_tiff import create_geotiff
 from extract_modern_roads import extract_modern_roads
 from patch_linestrings import merge_groups
 
-# A simple way to get the extent coordinates is to right-click on a Google map in a browser. Click on the displayed coordinates and then paste them below.
+# A simple way to get the extent coordinates is to open a Google map in a browser,
+# then right-click on the south-west corner of the area of interest. Then click on 
+# the displayed coordinates and then paste them below. Repeat for the north-east corner.
 EXTENT_SOUTHWEST_LAT, EXTENT_SOUTHWEST_LNG = 51.95244893871006, -1.7468378073656643
 EXTENT_NORTHEAST_LAT, EXTENT_NORTHEAST_LNG = 51.95504242639973, -1.7415778411414253
-LOCATION_NAME = 'longborough-detail'
+LOCATION_NAME = 'longborough'
 
-RASTER_TILE_KEY = 'U2vLM8EbXurAd3Gq6C45' # TO USE THE URL GIVEN BELOW, GET YOUR OWN KEY FROM https://cloud.maptiler.com/account/keys/
+RASTER_TILE_KEY = 'ySlCyGP2kmmfm9Dgtiqj' # TO USE THE URL GIVEN BELOW, GET YOUR OWN KEY FROM https://cloud.maptiler.com/account/keys/
 RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb10k1888/{z}/{x}/{y}.jpg?key=' + RASTER_TILE_KEY
 RASTER_TILE_ZOOM = 17
 
@@ -93,13 +95,25 @@ if SHOW_IMAGES:
     cv2.waitKey(0)
 
 window = 0
-def erase_areas(image, factor, closed = False, black = False, contours = True, subtract = False):
+def erase_areas(image, factor, closed = False, black = False, circles = False, contours = True, subtract = False):
     global window, OUTPUTDIR
     colour = 'black' if black else 'white'
     form = 'shapes' if contours else 'areas'
-    image = cv2.bitwise_not(image) if black else image
+    image = cv2.bitwise_not(image) if (black and not circles) else image
     size = factor * (MIN_ROAD_WIDTH ** 2) if contours else int(factor)
-    if contours:
+    if circles: # Used for removing, for example, dot shading (not very effective!)
+        form = 'circles'
+        r = factor
+        size = (2*r+4, 2*r+4)
+        template = np.ones(size, dtype=np.uint8)
+        cv2.circle(template, (r+2,r+2), r, (0,0,0), -1)
+        res = cv2.matchTemplate(image, template, cv2.TM_CCOEFF_NORMED)
+        # Threshold the result to find the locations where the image matches the kernel
+        loc = np.where(res >= 0.6)
+        # Draw circles of 8px diameter at the matching locations
+        for pt in zip(*loc[::-1]):
+            cv2.circle(image, (pt[0] + r+2, pt[1] + r+2), r, (255, 255, 255), -1)                                                               
+    elif contours:
         contours, _ = cv2.findContours(image, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
         for contour in contours:
             if (cv2.isContourConvex(contour) or closed == False) and cv2.contourArea(contour) < size:
@@ -109,7 +123,7 @@ def erase_areas(image, factor, closed = False, black = False, contours = True, s
         eroded_image = cv2.erode(image, kernel, iterations=1)
         dilated_image = cv2.dilate(eroded_image, kernel, iterations=1)
         image = cv2.subtract(image, dilated_image) if subtract else dilated_image
-    image = cv2.bitwise_not(image) if black else image
+    image = cv2.bitwise_not(image) if (black and not circles) else image
     message = 'Removed ' + colour + ' ' + form + ' (size ' + str(size) + ')'
     print(message)
     
@@ -129,7 +143,9 @@ def erase_areas(image, factor, closed = False, black = False, contours = True, s
 
 ## TO DO: Following line is too blunt - test shapes for squareness before erasure, perhaps by comparing shape area with the area of its convex hull
 result_binary = erase_areas(result_binary, 500) # Erase white shapes
-# result_binary = erase_areas(result_binary, 6, closed = True, black = True) # Erase small black shapes
+result_binary = erase_areas(result_binary, 2, contours = False, black = True) # Erase black dots
+result_binary = erase_areas(result_binary, 50, closed = True, black = True) # Erase black shapes
+result_binary = erase_areas(result_binary, 100, black = True) # Erase black shapes
 result_binary = erase_areas(result_binary, 200, black = True) # Erase black shapes
 result_binary = erase_areas(result_binary, 2 * MAX_ROAD_WIDTH, contours = False, subtract = True) # Erase large white areas
 result_binary = erase_areas(result_binary, 2/3 * MIN_ROAD_WIDTH, contours = False) # Erase narrow white areas
