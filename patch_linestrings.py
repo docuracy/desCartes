@@ -39,7 +39,7 @@ def find_shortest_path(linestrings, modernity, score, width, gap_size, modern_ro
     ## Reproject its endpoints into the raster pixel CRS, switching row,col to col,row
     start_point = Point(rasterio.transform.rowcol(transform, *line.coords[0])[::-1])
     end_point = Point(rasterio.transform.rowcol(transform, *line.coords[-1])[::-1])
-    
+        
     ## Add in the modernity, score, and width attributes
     
     # Create a directed graph and add nodes to the graph representing each LineString endpoint
@@ -50,8 +50,6 @@ def find_shortest_path(linestrings, modernity, score, width, gap_size, modern_ro
         G.add_node(ls.coords[-1], pos=ls.coords[-1])
         G.add_edge(ls.coords[0], ls.coords[-1], linestring=ls, weight=ls.length, score=score[i], width=width[i])
         G.add_edge(ls.coords[-1], ls.coords[0], linestring=LineString(ls.coords[::-1]), weight=ls.length, score=score[i], width=width[i])
-        if modernity[0] == 'id92CC9581-BCCE-4892-8D4B-6D71E531186A':
-            print(ls)
         # Add edges to bridge shortest gaps between linestring pairs
         for ls2 in linestrings[i+1:]:
             closest_distance = float('inf')
@@ -110,11 +108,18 @@ def find_shortest_path(linestrings, modernity, score, width, gap_size, modern_ro
     average_score = score_sum / edge_count if edge_count > 0 else 0
     average_width = width_sum / edge_count if edge_count > 0 else 0
     
+    if modernity[0] == 'idC2464111-3B6F-4879-9666-0651B513C9B0':
+        print(start_point,closest_start,end_point,closest_end)
+        print(ls)
+        print(path)
+        print(average_score,average_width)
+    
     coords = []
     for ls in linestrings:
         coords.extend(ls.coords)
     if len(coords) < 2:
         return None, [modernity[0],average_score,average_width]
+            
     return LineString(coords), [modernity[0],average_score,average_width]
 
 def merge_groups(line_strings, attributes, gap_size, modern_roads, transform, FILTER_SCORE):

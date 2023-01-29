@@ -42,7 +42,7 @@ from tiles_to_tiff import create_geotiff
 from extract_modern_roads import extract_modern_roads
 from patch_linestrings import merge_groups
 
-EXTENT = [-2.3338966,51.5078771,-2.3331382,51.5081926]
+EXTENT = [-2.339902,51.500157,-2.329067,51.512027]
 LOCATION_NAME = 'tormarton'
 RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb10k1888/{z}/{x}/{y}.jpg?key=U2vLM8EbXurAd3Gq6C45'
 RASTER_TILE_ZOOM = 17
@@ -59,9 +59,9 @@ OUTPUTDIR = './output/' + LOCATION_NAME + '/'
 GEOTIFF_NAME = LOCATION_NAME + '.tiff'
 TEMPLATE_SAMPLE = 10  # pixel distance between sample points to test for each candidate LineString
 MATCH_SCORE = .4 # Minimum pass score for structural_similarity in LineString filter
-FILTER_SCORE = 25 # Reject road candidates failing to meet this minimum score
+FILTER_SCORE = 20 # Reject road candidates failing to meet this minimum score
 
-SHOW_IMAGES = True
+SHOW_IMAGES = False
 
 # Get the current date and time for use in output filenames
 start_time = datetime.datetime.now()
@@ -72,7 +72,7 @@ if os.path.exists(OUTPUTDIR + GEOTIFF_NAME):
     mapfile = OUTPUTDIR + GEOTIFF_NAME
 else:
     mapfile = create_geotiff (RASTER_TILE_URL, OUTPUTDIR, GEOTIFF_NAME, EXTENT, RASTER_TILE_ZOOM)
-    extract_modern_roads(DATADIR, mapfile, OUTPUTDIR, ROADFILE, LOCATION_NAME)
+    extract_modern_roads(DATADIR, mapfile, OUTPUTDIR, ROADFILE, LOCATION_NAME, EXTENT)
 
 # Open the geotiff using rasterio
 with rasterio.open(mapfile) as raster:
@@ -119,10 +119,11 @@ def erase_areas(image, factor, closed = False, black = False, contours = True, s
         
     return image
 
+## TO DO: Following line is too blunt - test shapes for squareness before erasure, perhaps by comparing shape area with the area of its convex hull
 result_binary = erase_areas(result_binary, 500) # Erase white shapes
 # result_binary = erase_areas(result_binary, 2/3, black = True, contours = False, subtract = True) # Erase black areas
 result_binary = erase_areas(result_binary, 200, black = True) # Erase black shapes
-result_binary = erase_areas(result_binary, 1.5 * MAX_ROAD_WIDTH, contours = False, subtract = True) # Erase large white areas
+result_binary = erase_areas(result_binary, 2 * MAX_ROAD_WIDTH, contours = False, subtract = True) # Erase large white areas
 result_binary = erase_areas(result_binary, 2/3 * MIN_ROAD_WIDTH, contours = False) # Erase narrow white areas
 result_binary = erase_areas(result_binary, 500) # Erase white shapes
     
@@ -152,8 +153,9 @@ print('Scoring '+str(len(linestrings))+' LineStrings ...')
 modern_roads = gpd.read_file(OUTPUTDIR + 'OS_Open_Roads_LineStrings_WGS84.shp')
 
 roadscores, modern_linklines = score_linestrings(linestrings, TEMPLATE_SAMPLE, raster_image_gray, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, modern_roads, raster.transform, MAX_MODERN_OFFSET)
+save_shapefile(linestrings, raster.transform, raster.meta, OUTPUTDIR+'candidate_paths'+FILESTAMP+'shp', roadscores, modern_linklines)
 linestrings, roadscores = merge_groups(linestrings, roadscores, MAX_GAP_CLOSURE, modern_roads, raster.transform, FILTER_SCORE)
-save_shapefile(linestrings, raster.transform, raster.meta, OUTPUTDIR+'scored_paths'+FILESTAMP+'shp', roadscores, modern_linklines)
+save_shapefile(linestrings, raster.transform, raster.meta, OUTPUTDIR+'selected_paths'+FILESTAMP+'shp', roadscores)
 
 elapsed_time = datetime.datetime.now() - start_time
 elapsed_time_seconds = elapsed_time.total_seconds()
