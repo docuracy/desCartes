@@ -42,9 +42,13 @@ from tiles_to_tiff import create_geotiff
 from extract_modern_roads import extract_modern_roads
 from patch_linestrings import merge_groups
 
-EXTENT = [-2.339902,51.500157,-2.329067,51.512027]
-LOCATION_NAME = 'tormarton'
-RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb10k1888/{z}/{x}/{y}.jpg?key=U2vLM8EbXurAd3Gq6C45'
+# A simple way to get the extent coordinates is to right-click on a Google map in a browser. Click on the displayed coordinates and then paste them below.
+EXTENT_SOUTHWEST_LAT, EXTENT_SOUTHWEST_LNG = 51.95244893871006, -1.7468378073656643
+EXTENT_NORTHEAST_LAT, EXTENT_NORTHEAST_LNG = 51.95504242639973, -1.7415778411414253
+LOCATION_NAME = 'longborough-detail'
+
+RASTER_TILE_KEY = 'U2vLM8EbXurAd3Gq6C45' # TO USE THE URL GIVEN BELOW, GET YOUR OWN KEY FROM https://cloud.maptiler.com/account/keys/
+RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb10k1888/{z}/{x}/{y}.jpg?key=' + RASTER_TILE_KEY
 RASTER_TILE_ZOOM = 17
 
 ROADFILE = 'OS_Open_Roads_LineStrings_WGS84.gpkg'
@@ -61,12 +65,14 @@ TEMPLATE_SAMPLE = 10  # pixel distance between sample points to test for each ca
 MATCH_SCORE = .4 # Minimum pass score for structural_similarity in LineString filter
 FILTER_SCORE = 20 # Reject road candidates failing to meet this minimum score
 
-SHOW_IMAGES = False
+SHOW_IMAGES = True
 
 # Get the current date and time for use in output filenames
 start_time = datetime.datetime.now()
 timestamp = start_time.strftime("%Y-%m-%d_%H-%M-%S")
 FILESTAMP = "_{}.".format(timestamp)
+
+EXTENT = [EXTENT_SOUTHWEST_LNG, EXTENT_SOUTHWEST_LAT, EXTENT_NORTHEAST_LNG, EXTENT_NORTHEAST_LAT]
    
 if os.path.exists(OUTPUTDIR + GEOTIFF_NAME):
     mapfile = OUTPUTDIR + GEOTIFF_NAME
@@ -88,7 +94,7 @@ if SHOW_IMAGES:
 
 window = 0
 def erase_areas(image, factor, closed = False, black = False, contours = True, subtract = False):
-    global window
+    global window, OUTPUTDIR
     colour = 'black' if black else 'white'
     form = 'shapes' if contours else 'areas'
     image = cv2.bitwise_not(image) if black else image
@@ -104,7 +110,7 @@ def erase_areas(image, factor, closed = False, black = False, contours = True, s
         dilated_image = cv2.dilate(eroded_image, kernel, iterations=1)
         image = cv2.subtract(image, dilated_image) if subtract else dilated_image
     image = cv2.bitwise_not(image) if black else image
-    message = 'Removed ' + colour + ' ' + form + ': size = ' + str(size)
+    message = 'Removed ' + colour + ' ' + form + ' (size ' + str(size) + ')'
     print(message)
     
     if SHOW_IMAGES:
@@ -112,8 +118,10 @@ def erase_areas(image, factor, closed = False, black = False, contours = True, s
             raster_image_contours = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
             cv2.drawContours(raster_image_contours, contours, -1, (0,0,255), 1)
             cv2.imshow(message + ' [' + str(window) + ']', raster_image_contours)
+            cv2.imwrite(os.path.join(OUTPUTDIR, message + ' ' + str(window) + '.png'), raster_image_contours)
         else:
             cv2.imshow(message + ' [' + str(window) + ']', image)
+            cv2.imwrite(os.path.join(OUTPUTDIR, message + ' ' + str(window) + '.png'), image)
         cv2.waitKey(0)
         window += 1
         
@@ -121,7 +129,7 @@ def erase_areas(image, factor, closed = False, black = False, contours = True, s
 
 ## TO DO: Following line is too blunt - test shapes for squareness before erasure, perhaps by comparing shape area with the area of its convex hull
 result_binary = erase_areas(result_binary, 500) # Erase white shapes
-# result_binary = erase_areas(result_binary, 2/3, black = True, contours = False, subtract = True) # Erase black areas
+# result_binary = erase_areas(result_binary, 6, closed = True, black = True) # Erase small black shapes
 result_binary = erase_areas(result_binary, 200, black = True) # Erase black shapes
 result_binary = erase_areas(result_binary, 2 * MAX_ROAD_WIDTH, contours = False, subtract = True) # Erase large white areas
 result_binary = erase_areas(result_binary, 2/3 * MIN_ROAD_WIDTH, contours = False) # Erase narrow white areas
@@ -142,8 +150,9 @@ if SHOW_IMAGES:
     plt.show()
     raster_image_contours = raster_image_gray.copy()
     raster_image_contours = cv2.cvtColor(raster_image_contours, cv2.COLOR_GRAY2BGR)
-    cv2.drawContours(raster_image_contours, contours, -1, (0,0,255), 1)
+    cv2.drawContours(raster_image_contours, contours, -1, (0,0,255), 3)
     cv2.imshow("Image with Contours", raster_image_contours)
+    cv2.imwrite(os.path.join(OUTPUTDIR, 'Image with contours.png'), raster_image_contours)
     cv2.waitKey(0)
 
 # Score sample points from LineStrings based on structural_similarity to roads and proximity to modern roads
