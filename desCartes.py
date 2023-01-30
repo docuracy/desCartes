@@ -47,7 +47,7 @@ from patch_linestrings import merge_groups
 # the displayed coordinates and then paste them below. Repeat for the north-east corner.
 EXTENT_SOUTHWEST_LAT, EXTENT_SOUTHWEST_LNG = 51.95244893871006, -1.7468378073656643
 EXTENT_NORTHEAST_LAT, EXTENT_NORTHEAST_LNG = 51.95504242639973, -1.7415778411414253
-LOCATION_NAME = 'longborough'
+LOCATION_NAME = 'tormarton'
 
 RASTER_TILE_KEY = 'ySlCyGP2kmmfm9Dgtiqj' # TO USE THE URL GIVEN BELOW, GET YOUR OWN KEY FROM https://cloud.maptiler.com/account/keys/
 RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb10k1888/{z}/{x}/{y}.jpg?key=' + RASTER_TILE_KEY
@@ -140,6 +140,44 @@ def erase_areas(image, factor, closed = False, black = False, circles = False, c
         window += 1
         
     return image
+
+### EXPERIMENTAL - UNDER DEVELOPMENT
+def detect_roads(img):
+    _, img = cv2.threshold(img, 200, 255, cv2.THRESH_BINARY)
+    # Find contours
+    contours, hierarchy = cv2.findContours(img, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    result = np.zeros(img.shape[:2], dtype=np.uint8)
+    raster_image_contours = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    # Loop through each contour
+    for cnt in contours:
+        # Calculate aspect ratio
+        rect = cv2.minAreaRect(cnt)
+        width, height = rect[1]
+        if width == 0 or height == 0:
+            aspect_ratio = 99
+        else:
+            aspect_ratio = min(width, height) / max(width, height)
+        
+        # Calculate area of contour and its convex hull
+        contour_area = cv2.contourArea(cnt)
+        hull = cv2.convexHull(cnt)
+        hull_area = cv2.contourArea(hull)
+        
+        if (hull_area > 0 and contour_area / hull_area < 0.15) or aspect_ratio < .15:
+            # Draw the contour on the original image
+            cv2.drawContours(result, [cnt], -1, (255, 255, 255), -1)
+            cv2.drawContours(raster_image_contours, [cnt], -1, (0, 0, 255), -1)
+    cv2.imshow("Hull Roads", raster_image_contours)
+    cv2.imwrite(os.path.join(OUTPUTDIR, 'hull_roads.png'), raster_image_contours)
+    cv2.waitKey(0)
+    # Dilate the result by 2 pixels
+    kernel = np.ones((2, 2), np.uint8)
+    result = cv2.dilate(result, kernel, iterations=1)
+    return result
+
+mask = detect_roads(raster_image_gray)
+## The following line shows promise but needs further refinement before incorporation into workflow
+# result_binary = cv2.bitwise_and(result_binary, result_binary, mask=mask)
 
 ## TO DO: Following line is too blunt - test shapes for squareness before erasure, perhaps by comparing shape area with the area of its convex hull
 result_binary = erase_areas(result_binary, 500) # Erase white shapes
