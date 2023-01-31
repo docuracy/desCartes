@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 
 @author: Stephen Gadd, Docuracy Ltd, UK
@@ -58,5 +57,3 @@ def contours_to_linestrings(contours, tolerance, angle_threshold):
             add_linestring(points[start:len(points)])
     
     return linestrings
-
-

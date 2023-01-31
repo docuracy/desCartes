@@ -15,15 +15,7 @@ desCartes is pre-configured for use with the National Library of Scotland's 19th
 6":1 mile GB Ordnance Survey map tiles served by MapTiler Cloud, and with the modern 
 Ordnance Survey Open Roads vector dataset, but might be adapted to suit other maps.
 
-NEXT DEVELOPMENT STEPS
-
-Join fragments that share a modernity id.
-Snap singular endpoints to other endpoints if nearby and merge to single LineString, 
-otherwise add intermediate point to intersected line and move original endpoint to 
-that point.
-
-Try on OS drawings via LoL XYZ tiles.
-Try also https://commons.wikimedia.org/wiki/Gallery:Ordnance_Survey_1st_series_1:63360
+NEXT DEVELOPMENT STEPS: See https://github.com/docuracy/desCartes/issues
 
 '''
 import os
@@ -41,21 +33,36 @@ from road_templates import score_linestrings
 from tiles_to_tiff import create_geotiff
 from extract_modern_roads import extract_modern_roads
 from patch_linestrings import merge_groups
+from pickle import TRUE
+
+#####################
+## USER VARIABLES  ##
+#####################
 
 # A simple way to get the extent coordinates is to open a Google map in a browser,
 # then right-click on the south-west corner of the area of interest. Then click on 
 # the displayed coordinates and then paste them below. Repeat for the north-east corner.
-EXTENT_SOUTHWEST_LAT, EXTENT_SOUTHWEST_LNG = 51.95244893871006, -1.7468378073656643
-EXTENT_NORTHEAST_LAT, EXTENT_NORTHEAST_LNG = 51.95504242639973, -1.7415778411414253
-# LOCATION_NAME = 'longborough'
-LOCATION_NAME = 'tormarton'
+EXTENT_SOUTHWEST_LAT, EXTENT_SOUTHWEST_LNG = 51.960551, -1.744574
+EXTENT_NORTHEAST_LAT, EXTENT_NORTHEAST_LNG = 51.965317, -1.740072
 
-EXPERIMENTAL = True # Try experimental image processing?
+## The location name will be used to name the directory where files are stored.
+## If a geotiff already exist in this directory, it will be re-used, and the coordinates given above ignored.
+LOCATION_NAME = 'longborough'
+# LOCATION_NAME = 'tormarton'
+
+## Uncomment one of these methods, or create your own in the IMAGE PROCESSING CALLS section.
+## Any name you type here will be used in creating a filename, so avoid funky characters.
+# METHOD = 'candidate_areas'
+METHOD = 'original'
+# METHOD = 'development'
 
 RASTER_TILE_KEY = 'ySlCyGP2kmmfm9Dgtiqj' # TO USE THE URL GIVEN BELOW, GET YOUR OWN KEY FROM https://cloud.maptiler.com/account/keys/
 RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb10k1888/{z}/{x}/{y}.jpg?key=' + RASTER_TILE_KEY
 RASTER_TILE_ZOOM = 17
 
+## The ROADFILE must contain LineStrings only, reprojected if necessary to EPSG:4326 (WGS84)
+## It should be placed in the DATADIR defined below.
+## The file used here is too large to store on GitHub. It can be extracted from data downloadable from https://beta.ordnancesurvey.co.uk/products/os-open-roads
 ROADFILE = 'OS_Open_Roads_LineStrings_WGS84.gpkg'
 MAX_MODERN_OFFSET = 300 # Maximum allowable offset (degrees*1000, approximately metres)
 MAX_GAP_CLOSURE = 3000 / 1000000 # Maximum gap to be closed on matched modernity_id (degrees: approximately metres / 1000000)
@@ -72,12 +79,20 @@ FILTER_SCORE = 20 # Reject road candidates failing to meet this minimum score
 
 SHOW_IMAGES = True
 
+######################
+## SYSTEM VARIABLES ##
+######################
+
 # Get the current date and time for use in output filenames
 start_time = datetime.datetime.now()
 timestamp = start_time.strftime("%Y-%m-%d_%H-%M-%S")
-FILESTAMP = "_{}.".format(timestamp)
+FILESTAMP = "_{}_{}.".format(METHOD,timestamp)
 
 EXTENT = [EXTENT_SOUTHWEST_LNG, EXTENT_SOUTHWEST_LAT, EXTENT_NORTHEAST_LNG, EXTENT_NORTHEAST_LAT]
+
+######################
+## OPEN/CREATE MAPS ##
+######################
    
 if os.path.exists(OUTPUTDIR + GEOTIFF_NAME):
     mapfile = OUTPUTDIR + GEOTIFF_NAME
@@ -97,13 +112,37 @@ if SHOW_IMAGES:
     cv2.imshow("Original raster binary", result_binary)
     # cv2.waitKey(0)
 
-window = 0
-def erase_areas(image, factor, closed = False, black = False, circles = False, contours = True, subtract = False):
+################################
+## IMAGE PROCESSING FUNCTIONS ##
+################################
+
+def skeleton_uint8(img):
+    img = img > 0
+    img = skeletonize(img)
+    return (img * 255).astype(np.uint8)
+
+window = 0 # Counter for imshow windows to prevent overwriting
+def erase_areas(image, 
+                factor, 
+                closed = False, 
+                black = False, 
+                circles = False, 
+                blobs = False, 
+                contours = True, 
+                subtract = False,
+                aspect_ratio_max = .15,
+                contour_area_min = 2 * MIN_ROAD_WIDTH * MAX_ROAD_WIDTH,
+                contour_width_max = 3 * MAX_ROAD_WIDTH,
+                convexity_min = .4,
+                shading = False
+                ):
     global window, OUTPUTDIR
     colour = 'black' if black else 'white'
+    shading = 1 if False else -1
     form = 'shapes' if contours else 'areas'
-    image = cv2.bitwise_not(image) if (black and not circles) else image
-    size = factor * (MIN_ROAD_WIDTH ** 2) if contours else int(factor)
+    erasure = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+    image = cv2.bitwise_not(image) if (black and not circles and not blobs) else image
+    size = factor * (MIN_ROAD_WIDTH ** 2) if (contours and not circles and not blobs) else int(factor)
     if circles: # Used for removing, for example, dot shading (not very effective!)
         form = 'circles'
         r = factor
@@ -115,115 +154,128 @@ def erase_areas(image, factor, closed = False, black = False, circles = False, c
         loc = np.where(res >= 0.6)
         # Draw circles of 8px diameter at the matching locations
         for pt in zip(*loc[::-1]):
-            cv2.circle(image, (pt[0] + r+2, pt[1] + r+2), r, (255, 255, 255), -1)                                                               
+            cv2.circle(image, (pt[0] + r+2, pt[1] + r+2), r, (255, 255, 255), -1)   
+            cv2.circle(erasure, (pt[0] + r+2, pt[1] + r+2), r, (0, 0, 255), shading)   
+    elif blobs:
+        form = 'blobs'
+        params = cv2.SimpleBlobDetector_Params()
+        params.filterByColor =True
+        params.blobColor = 0 if black == True else 1
+        params.filterByCircularity = True
+        params.maxCircularity = 1
+        params.filterByArea = True
+        params.maxArea = size
+        detector = cv2.SimpleBlobDetector_create(params)
+        keypoints = detector.detect(image)
+        for kp in keypoints:
+            x, y = int(kp.pt[0]), int(kp.pt[1])
+            r = int(kp.size / 2)
+            cv2.circle(image, (x, y), r, (255, 255, 255), -1)
+            cv2.circle(erasure, (x, y), r, (0, 0, 255), shading)                    
     elif contours:
         contours, _ = cv2.findContours(image, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-        for contour in contours:
-            if (cv2.isContourConvex(contour) or closed == False) and cv2.contourArea(contour) < size:
+        if shading:
+            contours = sorted(contours, key=cv2.contourArea, reverse=True)
+        for contour in contours: 
+            # Calculate areas of contour and its convex hull
+            contour_area = cv2.contourArea(contour)
+            hull = cv2.convexHull(contour)
+            hull_area = cv2.contourArea(hull)
+            if hull_area == 0 or contour_area == 0:
+                cv2.drawContours(erasure, [contour], -1, (0, 255, 255), shading)
+                continue # Reject contour
+            convexity = contour_area / hull_area
+
+            # Calculate aspect ratio
+            width, height = cv2.minAreaRect(contour)[1]
+            if width == 0 or height == 0:
+                cv2.drawContours(erasure, [contour], -1, (0, 255, 255), shading)
+                continue # Reject contour
+            else:
+                aspect_ratio = min(width, height) / max(width, height)
+
+            if aspect_ratio <= aspect_ratio_max and contour_area >= contour_area_min and min(width, height) <= contour_width_max:
+                cv2.drawContours(erasure, [contour], -1, (0, 255, 0), shading) # Try not to erase road sections
+            elif convexity >= convexity_min or closed == False: 
                 cv2.drawContours(image, [contour], 0, (0, 0, 0), -1)
+                cv2.drawContours(erasure, [contour], -1, (255, 255, 0), shading)
+            else:
+                cv2.drawContours(erasure, [contour], -1, (0, 0, 255), shading)
     else:
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (size, size))
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (size, size))
+        mask = image
         eroded_image = cv2.erode(image, kernel, iterations=1)
         dilated_image = cv2.dilate(eroded_image, kernel, iterations=1)
         image = cv2.subtract(image, dilated_image) if subtract else dilated_image
-    image = cv2.bitwise_not(image) if (black and not circles) else image
+        mask = mask != image
+        erasure[mask] = [0, 0, 255]
+    image = cv2.bitwise_not(image) if (black and not circles and not blobs) else image
     message = 'Removed ' + colour + ' ' + form + ' (size ' + str(size) + ')'
     print(message)
-    
+
     if SHOW_IMAGES:
-        if contours:
-            raster_image_contours = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
-            cv2.drawContours(raster_image_contours, contours, -1, (0,0,255), 1)
-            cv2.imshow(message + ' [' + str(window) + ']', raster_image_contours)
-            cv2.imwrite(os.path.join(OUTPUTDIR, message + ' ' + str(window) + '.png'), raster_image_contours)
-        else:
-            cv2.imshow(message + ' [' + str(window) + ']', image)
-            cv2.imwrite(os.path.join(OUTPUTDIR, message + ' ' + str(window) + '.png'), image)
+        cv2.imshow(message + ' [' + str(window) + ']', erasure)
+        cv2.imwrite(os.path.join(OUTPUTDIR, message + ' ' + str(window) + '.png'), erasure)
         cv2.waitKey(0)
         window += 1
-        
+
     return image
 
-def mask_roads(img):
-    global MAX_ROAD_WIDTH, MIN_ROAD_WIDTH
-    _, img = cv2.threshold(img, 220, 255, cv2.THRESH_BINARY)
-    result = np.zeros(img.shape[:2], dtype=np.uint8)
-    raster_image_contours = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-    
-    ## TO DO
-    # Close white gaps in dashed lines, to separate tracks from adjacent areas (see tormarton & longborough)
-    # The following code is too crude and makes spurious holes
-    # kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-    # img = cv2.erode(img, kernel, iterations=1)
-    # img = cv2.dilate(img, kernel, iterations=1)
-    
-    # Find contours
-    contours, hierarchy = cv2.findContours(img, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-    # Loop through each contour
-    for cnt in contours:
-        # Calculate aspect ratio
-        width, height = cv2.minAreaRect(cnt)[1]
-        if width == 0 or height == 0:
-            continue # Reject contour
-        else:
-            aspect_ratio = min(width, height) / max(width, height)
-            
-        if aspect_ratio < .15 and min(width, height) <= 2 * MAX_ROAD_WIDTH:
-            # Green contour - possibly straight road section
-            cv2.drawContours(result, [cnt], -1, (255, 255, 255), -1)
-            cv2.drawContours(raster_image_contours, [cnt], -1, (0, 255, 0), -1)
-            
-        else:
-            # Calculate area of contour and its convex hull
-            contour_area = cv2.contourArea(cnt)
-            hull = cv2.convexHull(cnt)
-            hull_area = cv2.contourArea(hull)
-        
-            if hull_area == 0:
-                # Draw yellow rejected contour on the original image
-                cv2.drawContours(raster_image_contours, [cnt], -1, (0, 255, 255), -1)
-            elif contour_area > 2 * MIN_ROAD_WIDTH * MAX_ROAD_WIDTH and contour_area / hull_area < 0.5:
-                print(contour_area, hull_area)
-                # Draw the red contour on the original image
-                cv2.drawContours(result, [cnt], -1, (255, 255, 255), -1)
-                cv2.drawContours(raster_image_contours, [cnt], -1, (0, 0, 255), -1)
-            else: # Blue for hull rejection
-                cv2.drawContours(raster_image_contours, [cnt], -1, (255, 0, 0), -1)
-                
-    cv2.imshow("Road Mask", raster_image_contours)
-    cv2.imwrite(os.path.join(OUTPUTDIR, 'road_mask.png'), raster_image_contours)
-    cv2.waitKey(0)
-    # Dilate the result by 2 pixels
-    kernel = np.ones((2, 2), np.uint8)
-    result = cv2.dilate(result, kernel, iterations=1)
-    return result
+############################
+## IMAGE PROCESSING CALLS ##
+############################
 
-if EXPERIMENTAL:
-    mask = mask_roads(raster_image_gray)
-    result_binary = cv2.bitwise_and(result_binary, result_binary, mask=mask)
+print('Image processing: '+METHOD)
+match METHOD:
     
-else:
-    ## TO DO: Following line is too blunt - test shapes for squareness before erasure, perhaps by comparing shape area with the area of its convex hull
-    result_binary = erase_areas(result_binary, 500) # Erase white shapes
-    result_binary = erase_areas(result_binary, 2, contours = False, black = True) # Erase black dots
-    result_binary = erase_areas(result_binary, 50, closed = True, black = True) # Erase black shapes
-    result_binary = erase_areas(result_binary, 100, black = True) # Erase black shapes
-    result_binary = erase_areas(result_binary, 200, black = True) # Erase black shapes
-    result_binary = erase_areas(result_binary, 2 * MAX_ROAD_WIDTH, contours = False, subtract = True) # Erase large white areas
-    result_binary = erase_areas(result_binary, 2/3 * MIN_ROAD_WIDTH, contours = False) # Erase narrow white areas
-    result_binary = erase_areas(result_binary, 500) # Erase white shapes
+    case 'candidate_areas': # Attempts to filter roads from image in just two calls to the erase_areas function
+        result_binary = erase_areas(result_binary, MAX_ROAD_WIDTH ** 2, blobs = True, black = True) # Attempts to remove circular markers from roadways on GB OS maps
+        result_binary = erase_areas(result_binary, 
+            factor = 2 * MAX_ROAD_WIDTH / MIN_ROAD_WIDTH, 
+            contour_width_max = 3 * MAX_ROAD_WIDTH, 
+            convexity_min = .5, 
+            closed = True,
+            shading = True)
     
+    case 'original':
+        # Testing a range of parameters that might be useful for machine learning.
+        # No decent solution yet found for removing areas of woodland from GB OS maps - see longborough example.
+        result_binary = erase_areas(result_binary, MAX_ROAD_WIDTH ** 2, blobs = True, black = True) # Attempts to remove circular markers from roadways on GB OS maps
+        result_binary = erase_areas(result_binary, 2, contours = False) # Erase white noise
+        result_binary = erase_areas(result_binary, 500, closed = True) # Erase white shapes
+        # result_binary = erase_areas(result_binary, 2, contours = False, black = True) # Erase black dots
+        # result_binary = erase_areas(result_binary, 50, closed = True, black = True) # Erase black shapes
+        # result_binary = erase_areas(result_binary, 120, closed = True, black = True) # Erase black shapes
+        # result_binary = erase_areas(result_binary, 200, black = True) # Erase black shapes
+        result_binary = erase_areas(result_binary, 2 * MAX_ROAD_WIDTH, contours = False, subtract = True) # Erase large white areas
+        # result_binary = erase_areas(result_binary, 500, closed = True) # Erase white shapes
+        # result_binary = erase_areas(result_binary, 1.5 * MAX_ROAD_WIDTH, contours = False, subtract = True) # Erase large white areas
+        result_binary = erase_areas(result_binary, 2/3 * MIN_ROAD_WIDTH, contours = False) # Erase narrow white areas
+        result_binary = erase_areas(result_binary, 2000, closed = True) # Erase white shapes
+        result_binary = erase_areas(result_binary, 3, contours = False) # Erase white noise
+        
+    case _: # Default 
+        result_binary = erase_areas(result_binary, MAX_ROAD_WIDTH ** 2, blobs = True, black = True) # Attempts to remove circular markers from roadways on GB OS maps
+        
 # Skeletonize the binary image, find contours, and convert to LineStrings
 print('Skeletonize the binary image and find contours ...')    
-result_binary = result_binary > 0
-skeleton = skeletonize(result_binary)
-skeleton = (skeleton * 255).astype(np.uint8)
-contours, _ = cv2.findContours(skeleton, cv2.RETR_EXTERNAL , cv2.CHAIN_APPROX_NONE)
-print('Convert to LineStrings ...')
-linestrings = contours_to_linestrings(contours, tolerance = 2, angle_threshold = 80)
+skeleton = skeleton_uint8(result_binary)
+
+# Attempt to bridge gaps in skeleton by dilation and re-skeletonization
+kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15,15))
+skeleton_dilated = cv2.dilate(skeleton, kernel, iterations=1)
+if SHOW_IMAGES:
+    cv2.imshow('Dilated Skeleton', skeleton_dilated)
+    cv2.waitKey(0) 
+skeleton = skeleton_uint8(skeleton_dilated)
+
+#######################
+## VECTOR PROCESSING ##
+#######################
+
+contours, _ = cv2.findContours(skeleton, cv2.RETR_LIST , cv2.CHAIN_APPROX_NONE)
 
 if SHOW_IMAGES:
-    # print(contours)
     plt.imshow(skeleton, cmap='gray')
     plt.show()
     raster_image_contours = raster_image_gray.copy()
@@ -232,6 +284,9 @@ if SHOW_IMAGES:
     cv2.imshow("Image with Contours", raster_image_contours)
     cv2.imwrite(os.path.join(OUTPUTDIR, 'Image with contours.png'), raster_image_contours)
     cv2.waitKey(0)
+
+print('Convert to LineStrings ...')
+linestrings = contours_to_linestrings(contours, tolerance = 2, angle_threshold = 80)
 
 # Score sample points from LineStrings based on structural_similarity to roads and proximity to modern roads
 print('Scoring '+str(len(linestrings))+' LineStrings ...')
@@ -243,6 +298,10 @@ roadscores, modern_linklines = score_linestrings(linestrings, TEMPLATE_SAMPLE, r
 save_shapefile(linestrings, raster.transform, raster.meta, OUTPUTDIR+'candidate_paths'+FILESTAMP+'shp', roadscores, modern_linklines)
 linestrings, roadscores = merge_groups(linestrings, roadscores, MAX_GAP_CLOSURE, modern_roads, raster.transform, FILTER_SCORE)
 save_shapefile(linestrings, raster.transform, raster.meta, OUTPUTDIR+'selected_paths'+FILESTAMP+'shp', roadscores)
+
+##########
+## CODA ##
+##########
 
 elapsed_time = datetime.datetime.now() - start_time
 elapsed_time_seconds = elapsed_time.total_seconds()
