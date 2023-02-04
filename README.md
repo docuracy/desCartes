@@ -9,3 +9,7 @@
 For any given map [extent](https://en.wikipedia.org/wiki/Map_extent) (bounding coordinates), *des*Cartes first generates a georeferenced map image ([geotiff](https://en.wikipedia.org/wiki/GeoTIFF)), and then processes the image to extract candidate road lines. These lines are then tested for similarity against an idealised road template, and matched by proximity and orientation to modern road vectors. Gaps in the road lines are then filled (and junctions made) where appropriate, and each line is assigned a certainty score and (where possible) the id of the matching modern road segment.
 
 *des*Cartes is pre-configured for use with the [National Library of Scotland](https://maps.nls.uk/os/)'s 19th-century 6":1 mile GB Ordnance Survey map tiles served by [MapTiler Cloud](https://cloud.maptiler.com/tiles/uk-osgb10k1888/), and with the modern [Ordnance Survey Open Roads](https://beta.ordnancesurvey.co.uk/products/os-open-roads) vector dataset, but might be adapted to suit other maps.
+
+## Live Demo - *coming soon*
+
+It is hoped that it will soon be possible to see a live demonstration of *des*Cartes in your browser, where you will be able to select a small area on a map, see the results of image processing, and download the extracted road vectors as a shapefile. Please follow [@docuracy](https://twitter.com/docuracy) on Twitter or [@stephengadd@mstdn.social](https://mstdn.social/@stephengadd) on Mastodon for updates.
