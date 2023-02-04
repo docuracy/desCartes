@@ -52,8 +52,8 @@ LOCATION_NAME = 'longborough'
 
 ## Uncomment one of these methods, or create your own in the IMAGE PROCESSING CALLS section.
 ## Any name you type here will be used in creating a filename, so avoid funky characters.
-# METHOD = 'candidate_areas'
-METHOD = 'original'
+METHOD = 'candidate_areas'
+# METHOD = 'progressive'
 # METHOD = 'development'
 
 RASTER_TILE_KEY = 'ySlCyGP2kmmfm9Dgtiqj' # TO USE THE URL GIVEN BELOW, GET YOUR OWN KEY FROM https://cloud.maptiler.com/account/keys/
@@ -106,7 +106,8 @@ with rasterio.open(mapfile) as raster:
     
 raster_image_gray = cv2.cvtColor(cv2.merge(raster_image[:3]), cv2.COLOR_BGR2GRAY)
 ## TO DO: detect and set threshold programmatically
-_, result_binary = cv2.threshold(raster_image_gray, 200, 255, cv2.THRESH_BINARY)
+# _, result_binary = cv2.threshold(raster_image_gray, 200, 255, cv2.THRESH_BINARY)
+_, result_binary = cv2.threshold(raster_image_gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
 if SHOW_IMAGES:
     cv2.imshow("Original raster binary", result_binary)
@@ -116,10 +117,60 @@ if SHOW_IMAGES:
 ## IMAGE PROCESSING FUNCTIONS ##
 ################################
 
-def skeleton_uint8(img):
-    img = img > 0
-    img = skeletonize(img)
-    return (img * 255).astype(np.uint8)
+def erase_matches(gray_image, binary_image, template_dir, template_filename, threshold=0.7, rotation_step = 0):
+    template = cv2.imread(f"{template_dir}/{template_filename}", 0)
+    binarized_template = cv2.threshold(template, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+    rows, cols = binarized_template.shape
+    border = cv2.copyMakeBorder(binarized_template, rows, rows, cols, cols, cv2.BORDER_CONSTANT, value=255)
+    
+    found_matches = []
+
+    for angle in range(0, 10 if rotation_step == 0 else 360, 100 if rotation_step == 0 else rotation_step):
+        # Rotate the template image
+        rows, cols = template.shape
+        M = cv2.getRotationMatrix2D((cols + cols, rows + rows), angle, 1)
+        rotated_template = cv2.warpAffine(border, M, (cols + cols * 2, rows + rows * 2))
+        cropped_template = rotated_template[rows:rows + rows, cols:cols + cols]
+        res = cv2.matchTemplate(gray_image, cropped_template, cv2.TM_CCOEFF_NORMED)
+        # Perform template matching
+        cv2.imshow(f'Rotated template: {template_filename} - {angle}', rotated_template)
+        loc = np.where(res >= threshold)
+        found_matches.extend(list(zip(*loc[::-1])))
+        
+    print(f'{len(found_matches)} {template_filename} matches found.')
+    for pt in found_matches:
+        for i in range(cropped_template.shape[0]):
+            for j in range(cropped_template.shape[1]):
+                if cropped_template[i][j] == 0:
+                    binary_image[pt[1]+i][pt[0]+j] = 255
+
+    if SHOW_IMAGES:
+        gray_image_outlined = cv2.cvtColor(gray_image, cv2.COLOR_GRAY2BGR)
+        for pt in found_matches:
+            top_left = (pt[0], pt[1])
+            bottom_right = (pt[0] + cropped_template.shape[1], pt[1] + cropped_template.shape[0])
+            cv2.rectangle(gray_image_outlined, top_left, bottom_right, (0,0,255), 2)
+        cv2.imshow(f'Match locations: {template_filename}', gray_image_outlined)
+        cv2.imwrite(os.path.join(OUTPUTDIR, f'Match locations - {template_filename}.png'), gray_image_outlined)
+        cv2.waitKey(0)
+
+    return binary_image
+
+
+def template_density(contour, templates, thresholds, gray_image = raster_image_gray):
+    print('Checking template density...')
+    mask = np.zeros_like(gray_image)
+    cv2.drawContours(mask, [contour], -1, 255, -1)
+    masked_image = cv2.bitwise_and(gray_image, mask)
+    
+    total_template_area = 0
+    for i, template in enumerate(templates):
+        res = cv2.matchTemplate(masked_image, template, cv2.TM_CCOEFF_NORMED)
+        loc = np.where(res >= thresholds[i])
+        total_template_area += len(loc[0]) * template.shape[0] * template.shape[1]
+    
+    print('... done.')
+    return total_template_area / cv2.contourArea(contour)
 
 window = 0 # Counter for imshow windows to prevent overwriting
 def erase_areas(image, 
@@ -134,15 +185,24 @@ def erase_areas(image,
                 contour_area_min = 2 * MIN_ROAD_WIDTH * MAX_ROAD_WIDTH,
                 contour_width_max = 3 * MAX_ROAD_WIDTH,
                 convexity_min = .4,
-                shading = False
+                shading = False,
+                template_dir = './data/templates',
+                template_filenames = False,
+                thresholds = False,
+                template_density_threshold = .4
                 ):
     global window, OUTPUTDIR
     colour = 'black' if black else 'white'
     shading = 1 if False else -1
     form = 'shapes' if contours else 'areas'
-    erasure = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+    erasure = cv2.cvtColor(image, cv2.COLOR_GRAY2BGRA)
     image = cv2.bitwise_not(image) if (black and not circles and not blobs) else image
     size = factor * (MIN_ROAD_WIDTH ** 2) if (contours and not circles and not blobs) else int(factor)
+    if template_filenames:
+        templates = []
+        for i, template_filename in enumerate(template_filenames):
+            templates.append(cv2.imread(f"{template_dir}/{template_filename}", 0))
+        
     if circles: # Used for removing, for example, dot shading (not very effective!)
         form = 'circles'
         r = factor
@@ -155,7 +215,7 @@ def erase_areas(image,
         # Draw circles of 8px diameter at the matching locations
         for pt in zip(*loc[::-1]):
             cv2.circle(image, (pt[0] + r+2, pt[1] + r+2), r, (255, 255, 255), -1)   
-            cv2.circle(erasure, (pt[0] + r+2, pt[1] + r+2), r, (0, 0, 255), shading)   
+            cv2.circle(erasure, (pt[0] + r+2, pt[1] + r+2), r, (0, 0, 255, 128), shading)   
     elif blobs:
         form = 'blobs'
         params = cv2.SimpleBlobDetector_Params()
@@ -171,7 +231,7 @@ def erase_areas(image,
             x, y = int(kp.pt[0]), int(kp.pt[1])
             r = int(kp.size / 2)
             cv2.circle(image, (x, y), r, (255, 255, 255), -1)
-            cv2.circle(erasure, (x, y), r, (0, 0, 255), shading)                    
+            cv2.circle(erasure, (x, y), r, (0, 0, 255, 128), shading)                    
     elif contours:
         contours, _ = cv2.findContours(image, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
         if shading:
@@ -182,25 +242,34 @@ def erase_areas(image,
             hull = cv2.convexHull(contour)
             hull_area = cv2.contourArea(hull)
             if hull_area == 0 or contour_area == 0:
-                cv2.drawContours(erasure, [contour], -1, (0, 255, 255), shading)
+                cv2.drawContours(erasure, [contour], -1, (0, 255, 255, 128), shading)
                 continue # Reject contour
             convexity = contour_area / hull_area
 
             # Calculate aspect ratio
             width, height = cv2.minAreaRect(contour)[1]
             if width == 0 or height == 0:
-                cv2.drawContours(erasure, [contour], -1, (0, 255, 255), shading)
+                cv2.drawContours(erasure, [contour], -1, (0, 255, 255, 128), shading)
                 continue # Reject contour
             else:
                 aspect_ratio = min(width, height) / max(width, height)
 
             if aspect_ratio <= aspect_ratio_max and contour_area >= contour_area_min and min(width, height) <= contour_width_max:
-                cv2.drawContours(erasure, [contour], -1, (0, 255, 0), shading) # Try not to erase road sections
+                cv2.drawContours(erasure, [contour], -1, (0, 255, 0, 128), shading) # Try not to erase road sections
             elif convexity >= convexity_min or closed == False: 
                 cv2.drawContours(image, [contour], 0, (0, 0, 0), -1)
-                cv2.drawContours(erasure, [contour], -1, (255, 255, 0), shading)
+                cv2.drawContours(erasure, [contour], -1, (255, 255, 0, 128), shading)
             else:
-                cv2.drawContours(erasure, [contour], -1, (0, 0, 255), shading)
+                # Find template density (can be used, for example, for detecting woodland) - RATHER SLOW
+                templated = 0
+                if template_filenames and contour_area >= contour_area_min:
+                    templated = template_density(contour, templates, thresholds)
+                    if templated > template_density_threshold:
+                        print(templated)
+                        cv2.drawContours(image, [contour], 0, (0, 0, 0), -1)
+                        cv2.drawContours(erasure, [contour], -1, (0, 127, 255, 128), shading) # Orange
+                if templated <= template_density_threshold:
+                    cv2.drawContours(erasure, [contour], -1, (0, 0, 255, 128), shading)
     else:
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (size, size))
         mask = image
@@ -208,7 +277,7 @@ def erase_areas(image,
         dilated_image = cv2.dilate(eroded_image, kernel, iterations=1)
         image = cv2.subtract(image, dilated_image) if subtract else dilated_image
         mask = mask != image
-        erasure[mask] = [0, 0, 255]
+        erasure[mask] = [0, 0, 255, 255]
     image = cv2.bitwise_not(image) if (black and not circles and not blobs) else image
     message = 'Removed ' + colour + ' ' + form + ' (size ' + str(size) + ')'
     print(message)
@@ -230,16 +299,23 @@ match METHOD:
     
     case 'candidate_areas': # Attempts to filter roads from image in just two calls to the erase_areas function
         result_binary = erase_areas(result_binary, MAX_ROAD_WIDTH ** 2, blobs = True, black = True) # Attempts to remove circular markers from roadways on GB OS maps
+        result_binary = erase_matches(raster_image_gray, result_binary, './data/templates', 'tree-broadleaf.png')
+        result_binary = erase_matches(raster_image_gray, result_binary, './data/templates', 'tree-conifer.png', threshold=0.7)
+        # result_binary = erase_matches(raster_image_gray, result_binary, './data/templates', 'road-survey-mark.png', threshold=1, rotation_step = 15) #  Finds millions of matches ?!?!?!
         result_binary = erase_areas(result_binary, 
             factor = 2 * MAX_ROAD_WIDTH / MIN_ROAD_WIDTH, 
             contour_width_max = 3 * MAX_ROAD_WIDTH, 
             convexity_min = .5, 
             closed = True,
-            shading = True)
+            shading = True,
+            # template_filenames = ['tree-broadleaf.png','tree-conifer.png'], # Very slow
+            thresholds = [.7,.65]
+            )
     
-    case 'original':
+    case 'progressive':
         # Testing a range of parameters that might be useful for machine learning.
-        # No decent solution yet found for removing areas of woodland from GB OS maps - see longborough example.
+        result_binary = erase_matches(raster_image_gray, result_binary, './data/templates', 'tree-broadleaf.png')
+        result_binary = erase_matches(raster_image_gray, result_binary, './data/templates', 'tree-conifer.png', threshold=0.65)
         result_binary = erase_areas(result_binary, MAX_ROAD_WIDTH ** 2, blobs = True, black = True) # Attempts to remove circular markers from roadways on GB OS maps
         result_binary = erase_areas(result_binary, 2, contours = False) # Erase white noise
         result_binary = erase_areas(result_binary, 500, closed = True) # Erase white shapes
@@ -256,36 +332,36 @@ match METHOD:
         
     case _: # Default 
         result_binary = erase_areas(result_binary, MAX_ROAD_WIDTH ** 2, blobs = True, black = True) # Attempts to remove circular markers from roadways on GB OS maps
-        
-# Skeletonize the binary image, find contours, and convert to LineStrings
-print('Skeletonize the binary image and find contours ...')    
-skeleton = skeleton_uint8(result_binary)
 
 # Attempt to bridge gaps in skeleton by dilation and re-skeletonization
-kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15,15))
-skeleton_dilated = cv2.dilate(skeleton, kernel, iterations=1)
-if SHOW_IMAGES:
-    cv2.imshow('Dilated Skeleton', skeleton_dilated)
-    cv2.waitKey(0) 
-skeleton = skeleton_uint8(skeleton_dilated)
+def skeleton_contours(skeleton_binary, gap = 15, step = 1): # Larger steps run risk of blurring
+    print('Skeletonize the binary image and find contours ...')    
+    def skeleton_uint8(img):
+        img = img > 0
+        img = skeletonize(img)
+        return (img * 255).astype(np.uint8)
+    skeleton = skeleton_uint8(skeleton_binary)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (step,step))
+    for gap_count in range(0, gap, step):
+        skeleton_binary = cv2.dilate(skeleton, kernel, iterations=1)
+        skeleton = skeleton_uint8(skeleton_binary)
+    contours = cv2.findContours(skeleton, cv2.RETR_LIST , cv2.CHAIN_APPROX_NONE)[0]
+    print('... done.')    
+    if SHOW_IMAGES:
+        raster_image_contours = cv2.cvtColor(raster_image_gray, cv2.COLOR_GRAY2BGR)
+        cv2.drawContours(raster_image_contours, contours, -1, (0,0,255), 3)
+        cv2.imshow("Image with Contours", raster_image_contours)
+        cv2.imwrite(os.path.join(OUTPUTDIR, 'Image with contours.png'), raster_image_contours)
+        cv2.waitKey(0)
+    return contours
+contours = skeleton_contours(result_binary)
 
 #######################
 ## VECTOR PROCESSING ##
 #######################
 
-contours, _ = cv2.findContours(skeleton, cv2.RETR_LIST , cv2.CHAIN_APPROX_NONE)
-
-if SHOW_IMAGES:
-    plt.imshow(skeleton, cmap='gray')
-    plt.show()
-    raster_image_contours = raster_image_gray.copy()
-    raster_image_contours = cv2.cvtColor(raster_image_contours, cv2.COLOR_GRAY2BGR)
-    cv2.drawContours(raster_image_contours, contours, -1, (0,0,255), 3)
-    cv2.imshow("Image with Contours", raster_image_contours)
-    cv2.imwrite(os.path.join(OUTPUTDIR, 'Image with contours.png'), raster_image_contours)
-    cv2.waitKey(0)
-
 print('Convert to LineStrings ...')
+## TO DO - split linestrings in proximity of modern road section endpoints, and match them at this stage rather than later
 linestrings = contours_to_linestrings(contours, tolerance = 2, angle_threshold = 80)
 
 # Score sample points from LineStrings based on structural_similarity to roads and proximity to modern roads
