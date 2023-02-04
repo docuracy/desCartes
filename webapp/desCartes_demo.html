@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script
+      src="https://code.jquery.com/jquery-3.6.0.min.js"
+    ></script>
+    <script>
+      $(document).ready(function() {
+        var url = "https://descartes.viaeregiae.org/";
+        var data = { msg: "testing" };
+
+        $.ajax({
+          url: url,
+          dataType: "jsonp",
+          data: data,
+          success: function(response) {
+            $("#result").html(response);
+          }
+        });
+      });
+    </script>
+  </head>
+  <body>
+    <div id="result"></div>
+  </body>
+</html>
