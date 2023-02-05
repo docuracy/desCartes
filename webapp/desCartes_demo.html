@@ -8,6 +8,8 @@
     <script
       src="https://code.jquery.com/jquery-3.6.0.min.js"
     ></script>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+	<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
   </head>
   <body>
     <div id="map" style="height: 500px; width: 100%;"></div>
@@ -41,8 +43,17 @@
                 encodeURIComponent(bounds.getNorthEast().lng) + "," + 
                 encodeURIComponent(bounds.getNorthEast().lat),
           success: function(response) {
-            console.log(response);
-          }
+			  var image = new Image();
+			  image.src = "data:image/jpeg;base64," + response;
+			  $("<div></div>")
+			    .append(image)
+			    .dialog({
+			      modal: true,
+			      title: "Candidate Road Lines (further processing required!)",
+			      height: $(window).height() * 0.8,
+			      width: $(window).width() * 0.8
+			    });
+			}
         });
       });
     });
