@@ -39,9 +39,6 @@ $(document).ready(function() {
                 L.tileLayer(image.src, {
                     maxZoom: 18
                 }).addTo(imageMap);
-                $(".modal-dialog").click(function() {
-                    $(this).modal("hide");
-                });
             }
         });
     });
