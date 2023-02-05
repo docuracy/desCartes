@@ -20,17 +20,24 @@ $(document).ready(function() {
         var bounds = rect.getBounds();
         console.log(bounds)
         $.ajax({
-            type: "GET",
-            url: "https://descartes.viaeregiae.org/?bounds=" + encodeURIComponent(bounds.getSouthWest().lng) + "," + encodeURIComponent(bounds.getSouthWest().lat) + "," + encodeURIComponent(bounds.getNorthEast().lng) + "," + encodeURIComponent(bounds.getNorthEast().lat),
-            success: function(response) {
-                console.log(response)
-                var image = new Image();
-                image.src = "data:image/jpeg;base64," + response.base64_image;
-                var imageMap = L.map('map').setView([51.507505467209405, -2.3340990998876934], 15);
-                L.tileLayer(image.src, {
-                    maxZoom: 18
-                }).addTo(imageMap);
-            }
-        });
+		  type: "GET",
+		  url: "https://descartes.viaeregiae.org/?bounds=" + encodeURIComponent(bounds.getSouthWest().lng) + "," + encodeURIComponent(bounds.getSouthWest().lat) + "," + encodeURIComponent(bounds.getNorthEast().lng) + "," + encodeURIComponent(bounds.getNorthEast().lat),
+		  success: function(response) {
+		    var image = new Image();
+		    image.src = "data:image/jpeg;base64," + response.base64_image;
+			var modalDialog = $("<div>").addClass("modal-dialog").appendTo("body");
+			modalDialog.append('<div id="imageModal"></div>');
+			modalDialog.modal({
+				fadeDuration: 100,
+			});
+		    var imageMap = L.map("imageModal").setView([51.507505467209405, -2.3340990998876934], 15);
+		    L.tileLayer(image.src, {
+		      	maxZoom: 18
+		    }).addTo(imageMap);
+			$(".modal-dialog").click(function () {
+				$(this).modal("hide");
+			});
+		  }
+		});
     });
 });
