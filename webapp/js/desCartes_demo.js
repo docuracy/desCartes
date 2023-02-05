@@ -24,22 +24,32 @@ $(document).ready(function() {
             success: function(response) {
                 var image = new Image();
                 image.src = "data:image/jpeg;base64," + response.base64_image;
+
+                // Create a modal dialog for the image
                 var modalDialog = $("<div>").addClass("modal-dialog").appendTo("body");
-                modalDialog.html('<div id="imageModal" title="Candidate Road Lines (further processing required!)"></div>');
                 modalDialog.dialog({
+                    width: 600,
+                    height: 400,
                     modal: true,
-                    width: 'auto',
-                    height: 'auto',
-                    resizable: false,
                     close: function() {
-                        $(this).dialog("destroy").remove();
+                        modalDialog.remove();
                     }
                 });
-                var imageMap = L.map("imageModal").setView([51.507505467209405, -2.3340990998876934], 15);
-                L.tileLayer(image.src, {
-                    maxZoom: 18
-                }).addTo(imageMap);
+
+                // Create a Leaflet map for the image
+                var imageMap = L.map(modalDialog[0], {
+                    minZoom: 1,
+                    maxZoom: 10,
+                    crs: L.CRS.Simple
+                }).setView([0, 0], 1);
+
+                // Add the image to the map
+                L.imageOverlay(image.src, [
+                    [0, 0],
+                    [1, 1]
+                ]).addTo(imageMap);
             }
+
         });
     });
 });
