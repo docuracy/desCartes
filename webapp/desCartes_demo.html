@@ -11,7 +11,7 @@
 
         $.ajax({
           url: url,
-          dataType: "jsonp",
+          dataType: "json",
           data: data,
           success: function(response) {
             $("#result").html(response.message);
