@@ -1,70 +1,18 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A==" crossorigin=""/>
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin=""></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
-	<script src="https://cdn.jsdelivr.net/npm/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-    <script
-      src="https://code.jquery.com/jquery-3.6.0.min.js"
-    ></script>
-    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
-	<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
-	<style>
-		.ui-dialog {
-		   z-index: 9999 !important;
-		}
-	</style>
-  </head>
-  <body>
-    <div id="map" style="height: 500px; width: 100%;"></div>
-
-    <script>
-    $(document).ready(function() {
-      var map = L.map('map').setView([51.507505467209405, -2.3340990998876934], 15);
-      L.tileLayer('https://api.maptiler.com/tiles/uk-osgb10k1888/{z}/{x}/{y}.jpg?key=ySlCyGP2kmmfm9Dgtiqj', {
-        attribution: 'Map &copy; National Library of Scotland',
-        maxZoom: 18
-      }).addTo(map);
-
-      var rect = L.rectangle([
-        [51.50083068350566, -2.351390649563276],
-        [51.51321498717301, -2.3244272838851536]
-      ], {
-        color: "#ff7800",
-        weight: 1
-      }).addTo(map);
-      rect.editing.enable();
-
-      $("#send").click(function () {
-        var bounds = rect.getBounds();
-        console.log(bounds)
-        $.ajax({
-          type: "GET",
-	      type: "GET",
-	      url: "https://descartes.viaeregiae.org/?bounds=" + 
-                encodeURIComponent(bounds.getSouthWest().lng) + "," + 
-                encodeURIComponent(bounds.getSouthWest().lat) + "," + 
-                encodeURIComponent(bounds.getNorthEast().lng) + "," + 
-                encodeURIComponent(bounds.getNorthEast().lat),
-          success: function(response) {
-        	  console.log(response)
-			  var image = new Image();
-			  image.src = "data:image/jpeg;base64," + response.base64_image;
-			  $("<div></div>")
-			    .append(image)
-			    .dialog({
-			      modal: true,
-			      title: "Candidate Road Lines (further processing required!)",
-			      height: $(window).height() * 0.8,
-			      width: $(window).width() * 0.8
-			    });
-			}
-        });
-      });
-    });
-    </script>
-
-    <button id="send">Send</button>
-  </body>
+	<head>
+		<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A==" crossorigin="" />
+		<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin=""></script>
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+		<script src="https://cdn.jsdelivr.net/npm/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+		<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+		<link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+		<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+		<script src="./js/desCartes_demo.js"></script>
+		<link rel="stylesheet" href="./css/desCartes_demo.css">
+	</head>
+	<body>
+		<div id="map"></div>
+		<button id="send">Send</button>
+	</body>
 </html>
