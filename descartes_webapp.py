@@ -67,7 +67,7 @@ def hello():
                 # cv2.drawContours(raster_image_contours, contours, -1, (0,0,255), 3)   
                 # encoded_image = base64.b64encode(cv2.imencode('.jpg', raster_image_contours)[1]).decode("utf-8")
                 encoded_image = base64.b64encode(cv2.imencode('.jpg', raster_image_gray)[1]).decode("utf-8")
-                return jsonify({"skeleton_contours": encoded_image})
+                return jsonify({"base64_image": encoded_image})
             else:
                 return jsonify({"message": "No bounds found in the request."})
         else:
