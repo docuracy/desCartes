@@ -22,6 +22,7 @@ $(document).ready(function() {
             type: "GET",
             url: "https://descartes.viaeregiae.org/?bounds=" + encodeURIComponent(bounds.getSouthWest().lng) + "," + encodeURIComponent(bounds.getSouthWest().lat) + "," + encodeURIComponent(bounds.getNorthEast().lng) + "," + encodeURIComponent(bounds.getNorthEast().lat),
             success: function(response) {
+				$('#map, #send').hide();
                 var image = new Image();
                 image.src = "data:image/jpeg;base64," + response.base64_image;
 
@@ -38,8 +39,8 @@ $(document).ready(function() {
 
                 // Create a Leaflet map for the image
                 var imageMap = L.map(modalDialog[0], {
-                    minZoom: 1,
-                    maxZoom: 10,
+                    minZoom: 7,
+                    maxZoom: 25,
                     crs: L.CRS.Simple
                 }).setView([0, 0], 1);
 
