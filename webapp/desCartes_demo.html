@@ -43,6 +43,7 @@
                 encodeURIComponent(bounds.getNorthEast().lng) + "," + 
                 encodeURIComponent(bounds.getNorthEast().lat),
           success: function(response) {
+        	  console.log(response)
 			  var image = new Image();
 			  image.src = "data:image/jpeg;base64," + response;
 			  $("<div></div>")
