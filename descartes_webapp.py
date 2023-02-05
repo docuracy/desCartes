@@ -3,14 +3,11 @@ app = Flask(__name__)
 
 @app.route("/", methods=['GET'])
 def hello():
-    if request.method == 'GET':
-        bounds = request.get_json().get('bounds')
-        if bounds:
-            return jsonify({"bounds": bounds})
-        else:
-            return jsonify({"message": "No bounds found in the request."})
+    bounds = request.get_json().get('bounds')
+    if bounds:
+        return jsonify({"bounds": bounds})
     else:
-        return jsonify({"message": "desCartes!"})
+        return jsonify({"message": "No bounds found in the request."})
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0')
