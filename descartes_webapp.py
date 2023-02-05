@@ -3,7 +3,7 @@ app = Flask(__name__)
 
 @app.route("/", methods=['POST'])
 def hello():
-    msg = request.args.get('msg')
+    msg = request.get_json().get('msg')
     if msg:
         return jsonify({"message": msg})
     else:
