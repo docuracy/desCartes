@@ -16,7 +16,7 @@ from tiles_to_tiff import create_geotiff
 from extract_modern_roads import extract_modern_roads
 from patch_linestrings import merge_groups
 from pickle import TRUE
-from desCartes import erase_areas, erase_matches, skeleton_contours
+from image_processing import skeleton_contours, erase_matches, erase_areas
 import base64
 
 LOCATION_NAME = str(uuid.uuid4())
@@ -29,8 +29,6 @@ RASTER_TILE_ZOOM = 17
 
 MAX_ROAD_WIDTH = 15  # Pixel width of road between border lines. Should be an odd number
 MIN_ROAD_WIDTH = 3 # Should be an odd number
-
-SHOW_IMAGES = False
 
 app = Flask(__name__)
 
@@ -49,23 +47,26 @@ def hello():
                     raster_image = raster.read()
                     
                 raster_image_gray = cv2.cvtColor(cv2.merge(raster_image[:3]), cv2.COLOR_BGR2GRAY)
-                _, result_binary = cv2.threshold(raster_image_gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-                
-                result_binary = erase_areas(result_binary, MAX_ROAD_WIDTH ** 2, blobs = True, black = True) # Attempts to remove circular markers from roadways on GB OS maps
-                result_binary = erase_matches(raster_image_gray, result_binary, './data/templates', 'tree-broadleaf.png')
-                result_binary = erase_matches(raster_image_gray, result_binary, './data/templates', 'tree-conifer.png', threshold=0.7)
-                result_binary = erase_areas(result_binary, 
-                    factor = 2 * MAX_ROAD_WIDTH / MIN_ROAD_WIDTH, 
-                    contour_width_max = 3 * MAX_ROAD_WIDTH, 
-                    convexity_min = .5, 
-                    closed = True,
-                    shading = True,
-                    thresholds = [.7,.65]
-                    )   
-                contours = skeleton_contours(result_binary)
-                raster_image_contours = cv2.cvtColor(raster_image_gray, cv2.COLOR_GRAY2BGR)
-                cv2.drawContours(raster_image_contours, contours, -1, (0,0,255), 3)   
-                encoded_image = base64.b64encode(cv2.imencode('.jpg', raster_image_contours)[1]).decode("utf-8")
+                # _, result_binary = cv2.threshold(raster_image_gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+                #
+                # result_binary = erase_areas(result_binary, MAX_ROAD_WIDTH ** 2, blobs = True, black = True, SHOW_IMAGES = False, OUTPUTDIR = OUTPUTDIR) # Attempts to remove circular markers from roadways on GB OS maps
+                # result_binary = erase_matches(raster_image_gray, result_binary, './data/templates', 'tree-broadleaf.png', SHOW_IMAGES = False, OUTPUTDIR = OUTPUTDIR)
+                # result_binary = erase_matches(raster_image_gray, result_binary, './data/templates', 'tree-conifer.png', threshold=0.7, SHOW_IMAGES = False, OUTPUTDIR = OUTPUTDIR)
+                # result_binary = erase_areas(result_binary, 
+                #     factor = 2 * MAX_ROAD_WIDTH / MIN_ROAD_WIDTH, 
+                #     contour_width_max = 3 * MAX_ROAD_WIDTH, 
+                #     convexity_min = .5, 
+                #     closed = True,
+                #     shading = True,
+                #     thresholds = [.7,.65], 
+                #     SHOW_IMAGES = False, 
+                #     OUTPUTDIR = OUTPUTDIR
+                #     )   
+                # contours = skeleton_contours(result_binary, raster_image_gray, SHOW_IMAGES = False)
+                # raster_image_contours = cv2.cvtColor(raster_image_gray, cv2.COLOR_GRAY2BGR)
+                # cv2.drawContours(raster_image_contours, contours, -1, (0,0,255), 3)   
+                # encoded_image = base64.b64encode(cv2.imencode('.jpg', raster_image_contours)[1]).decode("utf-8")
+                encoded_image = base64.b64encode(cv2.imencode('.jpg', raster_image_gray)[1]).decode("utf-8")
                 return jsonify({"skeleton_contours": encoded_image})
             else:
                 return jsonify({"message": "No bounds found in the request."})
