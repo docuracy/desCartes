@@ -26,7 +26,7 @@ $(document).ready(function() {
                 console.log(response)
                 var image = new Image();
                 image.src = "data:image/jpeg;base64," + response.base64_image;
-                var imageMap = L.map('image').setView([51.507505467209405, -2.3340990998876934], 15);
+                var imageMap = L.map('map').setView([51.507505467209405, -2.3340990998876934], 15);
                 L.tileLayer(image.src, {
                     maxZoom: 18
                 }).addTo(imageMap);
