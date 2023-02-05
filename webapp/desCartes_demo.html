@@ -34,10 +34,12 @@
         console.log(bounds)
         $.ajax({
           type: "GET",
-	      url: "https://descartes.viaeregiae.org/",
-	      data: {
-		  	"bounds": [bounds.getSouthWest().lng, bounds.getSouthWest().lat, bounds.getNorthEast().lng, bounds.getNorthEast().lat]
-		  },
+	      type: "GET",
+	      url: "https://descartes.viaeregiae.org/?bounds=" + 
+                encodeURIComponent(bounds.getSouthWest().lng) + "," + 
+                encodeURIComponent(bounds.getSouthWest().lat) + "," + 
+                encodeURIComponent(bounds.getNorthEast().lng) + "," + 
+                encodeURIComponent(bounds.getNorthEast().lat),
           success: function(response) {
             console.log(response);
           }
