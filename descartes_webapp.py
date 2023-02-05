@@ -17,7 +17,7 @@ from extract_modern_roads import extract_modern_roads
 from patch_linestrings import merge_groups
 from pickle import TRUE
 from desCartes import erase_areas, erase_matches, skeleton_contours
-from pybase64 import base64
+import base64
 
 LOCATION_NAME = str(uuid.uuid4())
 OUTPUTDIR = './output/' + LOCATION_NAME + '/'
