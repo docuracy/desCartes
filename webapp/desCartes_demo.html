@@ -35,9 +35,10 @@
         $.ajax({
           type: "POST",
           url: "https://descartes.viaeregiae.org/",
-          data: {
-            "bounds": [bounds.getSouthWest().lng, bounds.getSouthWest().lat, bounds.getNorthEast().lng, bounds.getNorthEast().lat]
-          },
+          data: JSON.stringify({
+		  	"bounds": [bounds.getSouthWest().lng, bounds.getSouthWest().lat, bounds.getNorthEast().lng, bounds.getNorthEast().lat]
+		  }),
+          contentType: "application/json; charset=utf-8",
           success: function(response) {
             console.log(response);
           }
