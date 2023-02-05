@@ -1,7 +1,6 @@
 //
 // @author: Stephen Gadd, Docuracy Ltd, UK
 //
-
 $(document).ready(function() {
     var map = L.map('map').setView([51.507505467209405, -2.3340990998876934], 15);
     L.tileLayer('https://api.maptiler.com/tiles/uk-osgb10k1888/{z}/{x}/{y}.jpg?key=ySlCyGP2kmmfm9Dgtiqj', {
@@ -20,24 +19,30 @@ $(document).ready(function() {
         var bounds = rect.getBounds();
         console.log(bounds)
         $.ajax({
-		  type: "GET",
-		  url: "https://descartes.viaeregiae.org/?bounds=" + encodeURIComponent(bounds.getSouthWest().lng) + "," + encodeURIComponent(bounds.getSouthWest().lat) + "," + encodeURIComponent(bounds.getNorthEast().lng) + "," + encodeURIComponent(bounds.getNorthEast().lat),
-		  success: function(response) {
-		    var image = new Image();
-		    image.src = "data:image/jpeg;base64," + response.base64_image;
-			var modalDialog = $("<div>").addClass("modal-dialog").appendTo("body");
-			modalDialog.append('<div id="imageModal"></div>');
-			modalDialog.modal({
-				fadeDuration: 100,
-			});
-		    var imageMap = L.map("imageModal").setView([51.507505467209405, -2.3340990998876934], 15);
-		    L.tileLayer(image.src, {
-		      	maxZoom: 18
-		    }).addTo(imageMap);
-			$(".modal-dialog").click(function () {
-				$(this).modal("hide");
-			});
-		  }
-		});
+            type: "GET",
+            url: "https://descartes.viaeregiae.org/?bounds=" + encodeURIComponent(bounds.getSouthWest().lng) + "," + encodeURIComponent(bounds.getSouthWest().lat) + "," + encodeURIComponent(bounds.getNorthEast().lng) + "," + encodeURIComponent(bounds.getNorthEast().lat),
+            success: function(response) {
+                var image = new Image();
+                image.src = "data:image/jpeg;base64," + response.base64_image;
+                var modalDialog = $("<div>").addClass("modal-dialog").appendTo("body");
+                modalDialog.html('<div id="imageModal" title="Candidate Road Lines (further processing required!)"></div>');
+                modalDialog.dialog({
+                    modal: true,
+                    width: 'auto',
+                    height: 'auto',
+                    resizable: false,
+                    close: function() {
+                        $(this).dialog("destroy").remove();
+                    }
+                });
+                var imageMap = L.map("imageModal").setView([51.507505467209405, -2.3340990998876934], 15);
+                L.tileLayer(image.src, {
+                    maxZoom: 18
+                }).addTo(imageMap);
+                $(".modal-dialog").click(function() {
+                    $(this).modal("hide");
+                });
+            }
+        });
     });
 });
