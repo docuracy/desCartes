@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 app = Flask(__name__)
 
-@app.route("/", methods=['POST'])
+@app.route("/")
 def hello():
     msg = request.get_json().get('msg')
     if msg:
