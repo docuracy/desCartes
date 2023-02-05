@@ -34,7 +34,7 @@
         console.log(bounds)
         $.ajax({
           type: "POST",
-          url: "https://descartes.viaeregiae.org/",
+          url: "https://descartes.viaeregiae.org:5000/",
           data: JSON.stringify({
 		  	"bounds": [bounds.getSouthWest().lng, bounds.getSouthWest().lat, bounds.getNorthEast().lng, bounds.getNorthEast().lat]
 		  }),
