@@ -26,7 +26,7 @@ $(document).ready(function() {
                 image.src = "data:image/jpeg;base64," + response.base64_image;
 
                 // Create a modal dialog for the image
-                var modalDialog = $("<div>").addClass("modal-dialog").appendTo("body");
+                var modalDialog = $("<div title='Candidate Road Lines (further processing required!)'>").addClass("modal-dialog").appendTo("body");
                 modalDialog.dialog({
                     width: 600,
                     height: 400,
