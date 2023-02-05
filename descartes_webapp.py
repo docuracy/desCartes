@@ -1,11 +1,14 @@
 from flask import Flask, request, jsonify
 app = Flask(__name__)
 
-@app.route("/")
+@app.route("/", methods=['GET', 'POST'])
 def hello():
-    msg = request.get_json().get('msg')
-    if msg:
-        return jsonify({"message": msg})
+    if request.method == 'POST':
+        bounds = request.get_json().get('bounds')
+        if bounds:
+            return jsonify({"bounds": bounds})
+        else:
+            return jsonify({"message": "No bounds found in the request."})
     else:
         return jsonify({"message": "desCartes!"})
 
