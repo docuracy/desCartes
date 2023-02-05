@@ -49,10 +49,10 @@ def hello():
                 raster_image_gray = cv2.cvtColor(cv2.merge(raster_image[:3]), cv2.COLOR_BGR2GRAY)
                 _, result_binary = cv2.threshold(raster_image_gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
                 
-                result_binary = erase_areas(result_binary, factor = MAX_ROAD_WIDTH ** 2, blobs = True, black = True, SHOW_IMAGES = False, OUTPUTDIR = OUTPUTDIR) # Attempts to remove circular markers from roadways on GB OS maps
+                result_binary = erase_areas(result_binary, raster_image_gray, factor = MAX_ROAD_WIDTH ** 2, blobs = True, black = True, SHOW_IMAGES = False, OUTPUTDIR = OUTPUTDIR) # Attempts to remove circular markers from roadways on GB OS maps
                 # result_binary = erase_matches(raster_image_gray, result_binary, './data/templates', 'tree-broadleaf.png', SHOW_IMAGES = False, OUTPUTDIR = OUTPUTDIR)
                 # result_binary = erase_matches(raster_image_gray, result_binary, './data/templates', 'tree-conifer.png', threshold=0.7, SHOW_IMAGES = False, OUTPUTDIR = OUTPUTDIR)
-                # result_binary = erase_areas(result_binary, 
+                # result_binary = erase_areas(result_binary, raster_image_gray, 
                 #     factor = 2 * MAX_ROAD_WIDTH / MIN_ROAD_WIDTH, 
                 #     contour_width_max = 3 * MAX_ROAD_WIDTH, 
                 #     convexity_min = .5, 
