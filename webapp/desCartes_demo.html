@@ -33,12 +33,11 @@
         var bounds = rect.getBounds();
         console.log(bounds)
         $.ajax({
-          type: "POST",
-          url: "https://descartes.viaeregiae.org:5000/",
-          data: JSON.stringify({
+          type: "GET",
+	      url: "https://descartes.viaeregiae.org:5000/",
+	      data: {
 		  	"bounds": [bounds.getSouthWest().lng, bounds.getSouthWest().lat, bounds.getNorthEast().lng, bounds.getNorthEast().lat]
-		  }),
-          contentType: "application/json; charset=utf-8",
+		  },
           success: function(response) {
             console.log(response);
           }
