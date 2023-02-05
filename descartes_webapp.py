@@ -1,9 +1,9 @@
 from flask import Flask, request, jsonify
 app = Flask(__name__)
 
-@app.route("/", methods=['GET', 'POST'])
+@app.route("/", methods=['GET'])
 def hello():
-    if request.method == 'POST':
+    if request.method == 'GET':
         bounds = request.get_json().get('bounds')
         if bounds:
             return jsonify({"bounds": bounds})
