@@ -13,6 +13,17 @@
 	</head>
 	<body>
 		<div id="map"></div>
-		<button id="send">Send</button>
+		<div id="instructions">
+			<span>Drag and resize the selection box to an area of interest (up to *** km²), and then click here: </span>
+			<button id="send">Start Processing</button>
+			<div class="spinner-overlay">
+				<div class="spinner">
+					<div class="bounce1"></div>
+					<div class="bounce2"></div>
+					<div class="bounce3"></div>
+					<p id="spinner-text"></p>
+				</div>
+			</div>
+		</div>
 	</body>
 </html>
