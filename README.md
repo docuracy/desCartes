@@ -12,6 +12,6 @@ For any given map [extent](https://en.wikipedia.org/wiki/Map_extent) (bounding c
 
 ## Live Demo
 
-[Click here](https://descartes.viaeregiae.org/git/webapp/desCartes_demo.html) for a very limited live demonstration of *des*Cartes in your browser, where you can select a small area on a map and see the results of image processing. Map tileset selection, vector processing, and download of the extracted road vectors as a shapefile are not yet part of this demonstration. 
+[Click here](https://bit.ly/desCartes-demo) for a very limited live demonstration of *des*Cartes in your browser, where you can select a small area on a map and see the results of image processing. Map tileset selection, vector processing, and download of the extracted road vectors as a shapefile are not yet part of this demonstration. 
 
 Please follow [@docuracy](https://twitter.com/docuracy) on Twitter or [@stephengadd@mstdn.social](https://mstdn.social/@stephengadd) on Mastodon for updates.
