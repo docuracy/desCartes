@@ -24,6 +24,7 @@ body {
 	float: right;
     top: 4px;
     position: relative;
+    user-select: none;
 }
 
 .spinner-overlay {
@@ -43,6 +44,7 @@ body {
   text-align: center;
   color: #cb1818;
   font-weight: bold;
+  user-select: none;
 }
 
 .spinner {
