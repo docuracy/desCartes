@@ -45,7 +45,7 @@ $(document).ready(function() {
 
                 L.imageOverlay(image.src, [
                     [0, 0],
-                    [image.height, image.width]
+                    [1, 1]
                 ]).addTo(imageMap);
 
 				var southWest = L.latLng(0,0);
