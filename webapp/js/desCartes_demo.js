@@ -6,6 +6,11 @@
 const MAX_ALLOWED_AREA = 10;
 	
 $(document).ready(function() {
+	var spinner = $(".spinner-overlay")
+	$(".spinner div").hide();
+	spinner.show();
+	$(".spinner-overlay button").click(function() {spinner.hide();});
+	
     var map = L.map('map');
 
 	var rect = L.rectangle([
@@ -20,7 +25,6 @@ $(document).ready(function() {
 	rect.editing.enable();
 	$("#instructions span").text(function(i, text) { return text.replace("***", MAX_ALLOWED_AREA); });
 	updateButton();
-	var spinner = $(".spinner-overlay")
 	
     L.tileLayer('https://api.maptiler.com/tiles/uk-osgb10k1888/{z}/{x}/{y}.jpg?key=ySlCyGP2kmmfm9Dgtiqj', {
         attribution: 'Map &copy; National Library of Scotland',
@@ -62,6 +66,8 @@ $(document).ready(function() {
 	}
 	
     $("#send").click(function() {
+		$(".spinner div").show();
+		$("#spinner-text").text("");
 		spinner.show();
         var bounds = rect.getBounds();
         $.ajax({
