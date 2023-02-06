@@ -47,12 +47,12 @@ $(document).ready(function() {
                     [0, 0],
                     [1, 1]
                 ]).addTo(imageMap);
-
+/*
 				var southWest = L.latLng(0,0);
 				var northEast = L.latLng(image.height, image.width);
 				var bounds = L.latLngBounds(southWest, northEast);
 				imageMap.fitBounds(bounds);
-
+*/
             }
 
         });
