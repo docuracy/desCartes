@@ -10,6 +10,8 @@ For any given map [extent](https://en.wikipedia.org/wiki/Map_extent) (bounding c
 
 *des*Cartes is pre-configured for use with the [National Library of Scotland](https://maps.nls.uk/os/)'s 19th-century 6":1 mile GB Ordnance Survey map tiles served by [MapTiler Cloud](https://cloud.maptiler.com/tiles/uk-osgb10k1888/), and with the modern [Ordnance Survey Open Roads](https://beta.ordnancesurvey.co.uk/products/os-open-roads) vector dataset, but might be adapted to suit other maps.
 
-## Live Demo - *coming soon*
+## Live Demo
 
-It is hoped that it will soon be possible to see a live demonstration of *des*Cartes in your browser, where you will be able to select a small area on a map, see the results of image processing, and download the extracted road vectors as a shapefile. Please follow [@docuracy](https://twitter.com/docuracy) on Twitter or [@stephengadd@mstdn.social](https://mstdn.social/@stephengadd) on Mastodon for updates.
+[Click here](https://descartes.viaeregiae.org/git/webapp/desCartes_demo.html) for a very limited live demonstration of *des*Cartes in your browser, where you can select a small area on a map and see the results of image processing. Map tileset selection, vector processing, and download of the extracted road vectors as a shapefile are not yet part of this demonstration. 
+
+Please follow [@docuracy](https://twitter.com/docuracy) on Twitter or [@stephengadd@mstdn.social](https://mstdn.social/@stephengadd) on Mastodon for updates.
