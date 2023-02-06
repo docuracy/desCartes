@@ -41,18 +41,18 @@ $(document).ready(function() {
                     minZoom: 7,
                     maxZoom: 25,
                     crs: L.CRS.Simple
-                }).setView([parseInt(image.height/2), parseInt(image.width/2)], 10);
+                }).setView([0, 0], 1); // parseInt(image.height/2), parseInt(image.width/2)
 
                 L.imageOverlay(image.src, [
                     [0, 0],
                     [image.height, image.width]
                 ]).addTo(imageMap);
-/*
+
 				var southWest = L.latLng(0,0);
 				var northEast = L.latLng(image.height, image.width);
 				var bounds = L.latLngBounds(southWest, northEast);
 				imageMap.fitBounds(bounds);
-*/
+
             }
 
         });
