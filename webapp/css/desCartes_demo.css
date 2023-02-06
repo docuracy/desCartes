@@ -1,8 +1,4 @@
-#map {
-	height: 80%;
-	width: 80%;
-}
-.modal-dialog {
-    width: 80%; 
-    height: 80%;
+#map, .modal-dialog {
+	height: 500px;
+	width: 100%;
 }
