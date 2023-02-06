@@ -43,7 +43,9 @@ $(document).ready(function() {
                     maxZoom: 25,
                     crs: L.CRS.Simple
                 }).setView([0, 0], 1);
-				var bounds = L.latLngBounds([[0, 0], [image.height, image.width]]);
+				var southWest = L.latLng(0,0);
+				var northEast = L.latLng(image.height, image.width);
+				var bounds = L.latLngBounds(southWest, northEast);
 				imageMap.fitBounds(bounds);
 
                 // Add the image to the map
