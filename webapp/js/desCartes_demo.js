@@ -41,7 +41,7 @@ $(document).ready(function() {
                     minZoom: 7,
                     maxZoom: 25,
                     crs: L.CRS.Simple
-                }).setView([Math.parseInt(image.height/2), Math.parseInt(image.width/2)], 10);
+                }).setView([parseInt(image.height/2), parseInt(image.width/2)], 10);
 
                 L.imageOverlay(image.src, [
                     [0, 0],
