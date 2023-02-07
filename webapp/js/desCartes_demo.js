@@ -40,11 +40,11 @@ function calculateRectangleArea(bounds) {
     return area.toFixed(1);
 }
 
-function showCandidateLines(responses) {
+function showCandidateLines(response) {
     spinner(false);
 	var width = Math.round($(window).width() * .9);
 	var height = Math.round($(window).height() * .9);
-    var modalDialog = $("<div title='Close this dialog to continue processing'>").addClass("modal-dialog").appendTo("body");
+    var modalDialog = $("<div title='Click image to enlarge it. Close this dialog to continue processing'>").addClass("modal-dialog").appendTo("body");
     modalDialog.dialog({
         width: width,
         height: height,
@@ -57,17 +57,19 @@ function showCandidateLines(responses) {
 
     var thumbnailsContainer = $("<div>").addClass("thumbnails-container").appendTo(modalDialog);
 
-    responses.forEach(function(response) {
-        var thumbnail = $("<img>").addClass("thumbnail").attr("src", "data:image/jpeg;base64," + response.base64_image).appendTo(thumbnailsContainer);
-        var label = $("<div>").addClass("thumbnail-label").text(response.label).appendTo(thumbnailsContainer);
+    response.base64_images.forEach(function(image, i) {
+		var figure = $("<div>").addClass("figure").appendTo(thumbnailsContainer);
+        var thumbnail = $("<img>").addClass("thumbnail").attr("src", "data:image/jpeg;base64," + image.image).appendTo(figure);
+        var label = $("<div>").addClass("thumbnail-label").text((i+1)+'. '+image.label).appendTo(figure);
 
         thumbnail.click(function() {
-            var fullscreenImage = $("<img>").addClass("fullscreen-image").attr("src", "data:image/jpeg;base64," + response.base64_image).appendTo("body");
+            var overlay = $("<div>").addClass("overlay").appendTo("body");
+        	var fullscreenImage = $("<img>").addClass("fullscreen-image").attr("src", "data:image/jpeg;base64," + image.image).appendTo("body");
             var closeButton = $("<div>").addClass("close-button").text("X").appendTo("body");
-
-            closeButton.click(function() {
+    		closeButton.click(function() {
                 fullscreenImage.remove();
                 closeButton.remove();
+				overlay.remove();
             });
         });
     });
