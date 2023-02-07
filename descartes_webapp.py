@@ -1,3 +1,4 @@
+import logging
 from flask import Flask, request, jsonify
 import uuid
 import os
@@ -81,5 +82,8 @@ def hello():
         return jsonify({"error": str(e)})
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0')
+    handler = logging.FileHandler('error.log')
+    handler.setLevel(logging.ERROR)
+    app.logger.addHandler(handler)
+    app.run(debug=True, host='0.0.0.0')
 
