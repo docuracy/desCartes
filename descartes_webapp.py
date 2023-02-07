@@ -66,9 +66,9 @@ def hello():
                 contours = skeleton_contours(result_binary, raster_image_gray, SHOW_IMAGES = False)
                 raster_image_contours = cv2.cvtColor(raster_image_gray, cv2.COLOR_GRAY2BGR)
                 cv2.drawContours(raster_image_contours, contours, -1, (0,0,255), 3)   
-                #encoded_image = base64.b64encode(cv2.imencode('.jpg', raster_image_contours)[1]).decode("utf-8")
+                encoded_image = base64.b64encode(cv2.imencode('.jpg', raster_image_contours)[1]).decode("utf-8")
                 # app.logger.error('Returning contoured image.')
-                encoded_image = base64.b64encode(cv2.imencode('.jpg', result_binary)[1]).decode("utf-8")
+                # encoded_image = base64.b64encode(cv2.imencode('.jpg', result_binary)[1]).decode("utf-8")
                 return jsonify({"base64_image": encoded_image})
             else:
                 return jsonify({"message": "No bounds found in the request."})
