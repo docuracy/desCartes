@@ -35,6 +35,7 @@ app = Flask(__name__)
 
 @app.route("/", methods=['GET', 'POST'])
 def hello():
+    FORCE ERROR
     try:
         if request.method == 'GET':
             bounds = request.args.get('bounds')
