@@ -40,11 +40,11 @@ function calculateRectangleArea(bounds) {
     return area.toFixed(1);
 }
 
-function showCandidateLines(response) {
+function showCandidateLines(responses) {
     spinner(false);
 	var width = Math.round($(window).width() * .9);
 	var height = Math.round($(window).height() * .9);
-    var modalDialog = $("<div title='Candidate Road Lines (close this dialog to continue processing)'>").addClass("modal-dialog").appendTo("body");
+    var modalDialog = $("<div title='Close this dialog to continue processing'>").addClass("modal-dialog").appendTo("body");
     modalDialog.dialog({
         width: width,
         height: height,
@@ -54,21 +54,23 @@ function showCandidateLines(response) {
             modalDialog.remove();
         }
     });
-    var imageMap = L.map(modalDialog[0], {
-		minZoom: 0,
-	    maxZoom: 10,
-        crs: L.CRS.Simple
+
+    var thumbnailsContainer = $("<div>").addClass("thumbnails-container").appendTo(modalDialog);
+
+    responses.forEach(function(response) {
+        var thumbnail = $("<img>").addClass("thumbnail").attr("src", "data:image/jpeg;base64," + response.base64_image).appendTo(thumbnailsContainer);
+        var label = $("<div>").addClass("thumbnail-label").text(response.label).appendTo(thumbnailsContainer);
+
+        thumbnail.click(function() {
+            var fullscreenImage = $("<img>").addClass("fullscreen-image").attr("src", "data:image/jpeg;base64," + response.base64_image).appendTo("body");
+            var closeButton = $("<div>").addClass("close-button").text("X").appendTo("body");
+
+            closeButton.click(function() {
+                fullscreenImage.remove();
+                closeButton.remove();
+            });
+        });
     });
-    var image = new Image();
-    image.src = "data:image/jpeg;base64," + response.base64_image;
-    image.onload = function() {
-        var bounds = [
-            [0, 0],
-            [image.height / 1.7, image.width / 1.7]
-        ];
-        var imageOverlay = L.imageOverlay(image.src, bounds).addTo(imageMap);
-        imageMap.fitBounds(bounds);
-    }
 }
 
 $(document).ready(function() {

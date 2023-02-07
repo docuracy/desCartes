@@ -57,17 +57,17 @@ def erase_matches(gray_image, binary_image, template_dir, template_filename, thr
                 if cropped_template[i][j] == 0:
                     binary_image[pt[1]+i][pt[0]+j] = 255
 
+    gray_image_outlined = cv2.cvtColor(gray_image, cv2.COLOR_GRAY2BGR)
+    for pt in found_matches:
+        top_left = (pt[0], pt[1])
+        bottom_right = (pt[0] + cropped_template.shape[1], pt[1] + cropped_template.shape[0])
+        cv2.rectangle(gray_image_outlined, top_left, bottom_right, (0,0,255), 2)
     if SHOW_IMAGES:
-        gray_image_outlined = cv2.cvtColor(gray_image, cv2.COLOR_GRAY2BGR)
-        for pt in found_matches:
-            top_left = (pt[0], pt[1])
-            bottom_right = (pt[0] + cropped_template.shape[1], pt[1] + cropped_template.shape[0])
-            cv2.rectangle(gray_image_outlined, top_left, bottom_right, (0,0,255), 2)
         cv2.imshow(f'Match locations: {template_filename}', gray_image_outlined)
         cv2.imwrite(os.path.join(OUTPUTDIR, f'Match locations - {template_filename}.png'), gray_image_outlined)
         cv2.waitKey(0)
 
-    return binary_image
+    return binary_image, gray_image_outlined
 
 def template_density(contour, templates, thresholds, gray_image):
     print('Checking template density...')
@@ -208,4 +208,4 @@ def erase_areas(image,
         cv2.waitKey(0)
         window += 1
 
-    return image
+    return image, erasure
