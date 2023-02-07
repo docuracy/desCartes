@@ -1,11 +1,27 @@
+:root {
+--modal-font-color: #f4f4f4;
+}
+
 body {
 	font-family: Arial, sans-serif;
     font-size: 13px;
+    margin: 0;
 }
 
-#map, .modal-dialog {
-	height: 500px;
+#map-container {
+	height: 100vh;
+	padding: 0;
+	margin: 0;
+}
+
+#map {
+	height: 100%;
 	width: 100%;
+}
+
+.modal-dialog {
+	height: auto;
+	width: 800px;
 }
 
 #send {
@@ -21,9 +37,17 @@ body {
 }
 
 #instructions {
-	float: right;
-    top: 4px;
-    position: relative;
+    float: right;
+    z-index: 9999;
+    position: absolute;
+    width: 250px;
+    top: 25px;
+    right: 25px;
+    padding: 10px;
+    background-color: yellow;
+    border: 2px solid black;
+    border-radius: 7px;
+    box-shadow: 2px 2px rgb(0 0 0 / 25%);
     user-select: none;
 }
 
@@ -42,7 +66,7 @@ body {
   font-size: 16px;
   margin-top: 10px;
   text-align: center;
-  color: #cb1818;
+  color: var(--modal-font-color);
   font-weight: bold;
   user-select: none;
 }
@@ -57,7 +81,7 @@ body {
 .spinner > div {
   width: 40px;
   height: 40px;
-  background-color: #cb1818;
+  background-color: var(--modal-font-color);
   border-radius: 100%;
   display: inline-block;
   -webkit-animation: sk-bouncedelay 1.4s infinite ease-in-out both;

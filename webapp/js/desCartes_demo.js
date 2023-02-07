@@ -42,10 +42,12 @@ function calculateRectangleArea(bounds) {
 
 function showCandidateLines(response) {
     spinner(false);
+	var width = Math.round($(window).width() * .9);
+	var height = Math.round($(window).height() * .9);
     var modalDialog = $("<div title='Candidate Road Lines (close this dialog to continue processing)'>").addClass("modal-dialog").appendTo("body");
     modalDialog.dialog({
-        width: 600,
-        height: 400,
+        width: width,
+        height: height,
         modal: true,
         close: function() {
             spinner("Further steps are not yet part of this demonstration.");
@@ -53,6 +55,8 @@ function showCandidateLines(response) {
         }
     });
     var imageMap = L.map(modalDialog[0], {
+		minZoom: 0,
+	    maxZoom: 10,
         crs: L.CRS.Simple
     });
     var image = new Image();
@@ -60,7 +64,7 @@ function showCandidateLines(response) {
     image.onload = function() {
         var bounds = [
             [0, 0],
-            [image.height, image.width]
+            [image.height / 1.7, image.width / 1.7]
         ];
         var imageOverlay = L.imageOverlay(image.src, bounds).addTo(imageMap);
         imageMap.fitBounds(bounds);
