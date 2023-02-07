@@ -35,6 +35,7 @@ from extract_modern_roads import extract_modern_roads
 from patch_linestrings import merge_groups
 from pickle import TRUE
 from image_processing import skeleton_contours, erase_matches, erase_areas
+import base64
 
 #####################
 ## USER VARIABLES  ##
