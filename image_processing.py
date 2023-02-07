@@ -45,7 +45,8 @@ def erase_matches(gray_image, binary_image, template_dir, template_filename, thr
         cropped_template = rotated_template[rows:rows + rows, cols:cols + cols]
         res = cv2.matchTemplate(gray_image, cropped_template, cv2.TM_CCOEFF_NORMED)
         # Perform template matching
-        cv2.imshow(f'Rotated template: {template_filename} - {angle}', rotated_template)
+        if SHOW_IMAGES:
+            cv2.imshow(f'Rotated template: {template_filename} - {angle}', rotated_template)
         loc = np.where(res >= threshold)
         found_matches.extend(list(zip(*loc[::-1])))
         
