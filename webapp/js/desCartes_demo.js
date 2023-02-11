@@ -50,7 +50,7 @@ function showCandidateLines(response) {
         height: height,
         modal: true,
         close: function() {
-            spinner("Further steps are not yet part of this demonstration.");
+            /*spinner("Further steps are not yet part of this demonstration.");*/
             modalDialog.remove();
         }
     });
@@ -146,7 +146,7 @@ $(document).ready(function() {
         $('#gap_close').append($("<option>", {
             value: i,
             text: i,
-            selected: (i == 16)
+            selected: (i == 3)
         }));
     }
 	$("#road-parameters label").each(function() {

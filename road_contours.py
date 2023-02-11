@@ -15,10 +15,10 @@ def road_contours(grayscale_image,
                   binarization_threshold = 210,
                   MAX_ROAD_WIDTH = 12, 
                   MIN_ROAD_WIDTH = 6, 
-                  convexity_min = .6, 
+                  convexity_min = .9, 
                   min_size_factor = 7, # Multiplied by int(MAX_ROAD_WIDTH)^2 to give minimum size for a contour to be considered
-                  inflation_factor = 3, # Multiplied by int(MAX_ROAD_WIDTH) to limit average breadth of a contour perpendicular to its skeleton
-                  gap_close = 16, # For closing gaps between likely roads
+                  inflation_factor = 1.5, # Multiplied by int(MAX_ROAD_WIDTH) to limit average breadth of a contour perpendicular to its skeleton
+                  gap_close = 3, # For closing gaps between likely roads
                   templating = True,
                   template_dir = './data/templates', 
                   template_filenames = ['tree-broadleaf.png', 'tree-conifer.png'], 
@@ -48,7 +48,8 @@ def road_contours(grayscale_image,
     # Create skeleton for use in contour analysis
     skeleton = skeletonize(binary_image / 255).astype(np.uint8) * 255    
     
-    base64_images.append({"label": "Thinned map image", "image": base64.b64encode(cv2.imencode('.png', binary_image)[1]).decode("utf-8")})      
+    base64_images.append({"label": "Thinned map image", "image": base64.b64encode(cv2.imencode('.png', binary_image)[1]).decode("utf-8")}) 
+    base64_images.append({"label": "Skeletonized map image", "image": base64.b64encode(cv2.imencode('.png', skeleton)[1]).decode("utf-8")})      
     # cv2.imshow('binary_image', binary_image) 
     # cv2.imshow('skeleton', skeleton) 
     # cv2.waitKey(0)
