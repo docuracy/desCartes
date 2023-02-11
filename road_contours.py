@@ -16,8 +16,8 @@ def road_contours(grayscale_image,
                   MAX_ROAD_WIDTH = 12, 
                   MIN_ROAD_WIDTH = 6, 
                   convexity_min = .6, 
-                  min_size_factor = 7, # Multiplied by MAX_ROAD_WIDTH^2 to give minimum size for a contour to be considered
-                  inflation_factor = 3, # Multiplied by MAX_ROAD_WIDTH to limit average breadth of a contour perpendicular to its skeleton
+                  min_size_factor = 7, # Multiplied by int(MAX_ROAD_WIDTH)^2 to give minimum size for a contour to be considered
+                  inflation_factor = 3, # Multiplied by int(MAX_ROAD_WIDTH) to limit average breadth of a contour perpendicular to its skeleton
                   gap_close = 16, # For closing gaps between likely roads
                   templating = True,
                   template_dir = './data/templates', 
@@ -29,11 +29,11 @@ def road_contours(grayscale_image,
                   ):
     
     print('Finding road contours ...')
-    MIN_SIZE = min_size_factor * MAX_ROAD_WIDTH ** 2
+    MIN_SIZE = float(min_size_factor) * int(MAX_ROAD_WIDTH) ** 2
     if binary_image is False:
-        blurred_grayscale_image = cv2.medianBlur(grayscale_image, blur_size) 
+        blurred_grayscale_image = cv2.medianBlur(grayscale_image, int(blur_size)) 
         # binary_image = cv2.threshold(grayscale_image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1] # Tends to create gaps in road lines
-        _, binary_image = cv2.threshold(blurred_grayscale_image, binarization_threshold, 255, cv2.THRESH_BINARY)
+        _, binary_image = cv2.threshold(blurred_grayscale_image, int(binarization_threshold), 255, cv2.THRESH_BINARY)
 
     base64_images = []
     base64_images.append({"label": "Thresholded map image", "image": base64.b64encode(cv2.imencode('.png', binary_image)[1]).decode("utf-8")})      
@@ -42,7 +42,7 @@ def road_contours(grayscale_image,
     binary_image = np.invert(binary_image)  
     binary_image = skeletonize(binary_image / 255).astype(np.uint8) * 255
     # Dilate to close small gaps in road outlines    
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (MIN_ROAD_WIDTH, MIN_ROAD_WIDTH))
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (int(MIN_ROAD_WIDTH), int(MIN_ROAD_WIDTH)))
     binary_image = cv2.dilate(binary_image, kernel, iterations=1)
     binary_image = np.invert(binary_image)
     # Create skeleton for use in contour analysis
@@ -87,7 +87,7 @@ def road_contours(grayscale_image,
         if hull_area == 0:
             continue # Reject contour
         convexity = contour_areas[i] / hull_area
-        if convexity > convexity_min:
+        if convexity > float(convexity_min):
             visualisation_contoursets[0][2].append(contour) # Green for convexity rejection
             continue # Reject contour      
         
@@ -101,11 +101,11 @@ def road_contours(grayscale_image,
         skeleton_area = np.sum(skeleton & (emmentaler == 255))
         # Calculate contour area divided by the number of pixels in contour's skeleton
         inflation = contour_areas[i] / max(.000001, skeleton_area)
-        if inflation < MIN_ROAD_WIDTH or inflation > inflation_factor * MAX_ROAD_WIDTH:
+        if inflation < int(MIN_ROAD_WIDTH) or inflation > float(inflation_factor) * int(MAX_ROAD_WIDTH):
             visualisation_contoursets[1][2].append(contour) # Purple for inflation rejection
             continue # Reject contour    
         
-        if templating:
+        if bool(templating):
             ## Try testing woodland density using matchTemplate
             mask = emmentaler.astype(bool)
             masked_image = grayscale_image * mask[:, :]
@@ -119,7 +119,7 @@ def road_contours(grayscale_image,
                 match_count += np.count_nonzero(res >= thresholds[i])
                 template_area = template.shape[0] * template.shape[1]
             # print("Tree density: " + str(match_count * template_area / emmentaler_area))
-            if match_count * template_area / emmentaler_area > maximum_tree_density:
+            if match_count * template_area / emmentaler_area > float(maximum_tree_density):
                 visualisation_contoursets[2][2].append(contour) # Yellow for tree density rejection
                 continue # Reject contour    
             
@@ -137,7 +137,7 @@ def road_contours(grayscale_image,
     
     ## Next, dilate/erode to close any *small* gaps in road sections
     print("Dilating ...")
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (gap_close, gap_close))
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (int(gap_close), int(gap_close)))
     likely_roads = cv2.dilate(likely_roads, kernel, iterations=1)
     
     ## Skeletonize
