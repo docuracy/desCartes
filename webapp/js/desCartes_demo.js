@@ -111,14 +111,45 @@ $(document).ready(function() {
     $("#send").click(function() {
         spinner("");
         var bounds = rect.getBounds();
+		var formData = $("#road-parameters").serialize();
         $.ajax({
             type: "GET",
-            url: "https://descartes.viaeregiae.org/?bounds=" + encodeURIComponent(bounds.getSouthWest().lng) + "," + encodeURIComponent(bounds.getSouthWest().lat) + "," + encodeURIComponent(bounds.getNorthEast().lng) + "," + encodeURIComponent(bounds.getNorthEast().lat),
+            url: "https://descartes.viaeregiae.org/?bounds=" + encodeURIComponent(bounds.getSouthWest().lng) + "," + encodeURIComponent(bounds.getSouthWest().lat) + "," + encodeURIComponent(bounds.getNorthEast().lng) + "," + encodeURIComponent(bounds.getNorthEast().lat) + "&" + formData,
             success: function(response) {
                 showCandidateLines(response)
             }
 
 
         });
+    });
+
+	$("#toggleForm").click(function() {
+	    $("#road-parameters").toggle();
+	    $(this).text($(this).text() == "Adjust Parameters" ? "Hide Parameters" : "Adjust Parameters");
+	}).click();
+	
+	for (i = 1; i <= 11; i += 2) {
+        $('#blur_size').append($("<option>", {
+            value: i,
+            text: i,
+            selected: (i == 3)
+        }));
+    }
+	for (i = 0; i <= 254; i++) {
+        $('#binarization_threshold').append($("<option>", {
+            value: i,
+            text: i,
+            selected: (i == 210)
+        }));
+    }
+	for (i = 0; i <= 30; i++) {
+        $('#gap_close').append($("<option>", {
+            value: i,
+            text: i,
+            selected: (i == 16)
+        }));
+    }
+	$("#road-parameters label").each(function() {
+      $(this).append("<sup class='tooltip-mark'>?</sup>");
     });
 });

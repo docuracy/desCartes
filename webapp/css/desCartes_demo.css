@@ -49,6 +49,39 @@ body {
     border-radius: 7px;
     box-shadow: 2px 2px rgb(0 0 0 / 25%);
     user-select: none;
+    max-height: calc(100vh - 70px);
+    overflow: auto;
+}
+
+#road-parameters {
+	text-align: end;
+    padding-top: 32px;
+}
+
+#road-parameters label {
+    width: 60%;
+    display: inline-block;
+    text-align: right;
+    margin-right: 10px;
+}
+
+#road-parameters input[type=number], #road-parameters input[type=text], #road-parameters select {
+    width: 30%;
+    text-align: right;
+    margin-right: 0;
+}
+
+input[type="checkbox"] {
+	margin-right: 25%;
+}
+
+#toggleForm {
+	float: right;
+    margin-top: 8px;
+}
+
+.tooltip-mark {
+	cursor: pointer;
 }
 
 .figure {
