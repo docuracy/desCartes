@@ -36,6 +36,8 @@ from patch_linestrings import merge_groups
 from pickle import TRUE
 from image_processing import skeleton_contours, erase_matches, erase_areas
 import base64
+from find_areas import find_areas
+from road_contours import road_contours
 
 #####################
 ## USER VARIABLES  ##
@@ -44,17 +46,18 @@ import base64
 # A simple way to get the extent coordinates is to open a Google map in a browser,
 # then right-click on the south-west corner of the area of interest. Then click on 
 # the displayed coordinates and then paste them below. Repeat for the north-east corner.
-EXTENT_SOUTHWEST_LAT, EXTENT_SOUTHWEST_LNG = 51.960551, -1.744574
-EXTENT_NORTHEAST_LAT, EXTENT_NORTHEAST_LNG = 51.965317, -1.740072
+EXTENT_SOUTHWEST_LAT, EXTENT_SOUTHWEST_LNG = 51.95519035608032, -1.7566191914759899,
+EXTENT_NORTHEAST_LAT, EXTENT_NORTHEAST_LNG = 51.968532168339586, -1.725002502295734
 
 ## The location name will be used to name the directory where files are stored.
 ## If a geotiff already exist in this directory, it will be re-used, and the coordinates given above ignored.
 LOCATION_NAME = 'longborough'
+# LOCATION_NAME = 'longborough-south'
 # LOCATION_NAME = 'tormarton'
 
 ## Uncomment one of these methods, or create your own in the IMAGE PROCESSING CALLS section.
 ## Any name you type here will be used in creating a filename, so avoid funky characters.
-METHOD = 'candidate_areas'
+METHOD = 'road_contours'
 # METHOD = 'progressive'
 # METHOD = 'development'
 
@@ -111,8 +114,8 @@ raster_image_gray = cv2.cvtColor(cv2.merge(raster_image[:3]), cv2.COLOR_BGR2GRAY
 # _, result_binary = cv2.threshold(raster_image_gray, 200, 255, cv2.THRESH_BINARY)
 _, result_binary = cv2.threshold(raster_image_gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
-if SHOW_IMAGES:
-    cv2.imshow("Original raster binary", result_binary)
+# if SHOW_IMAGES:
+#     cv2.imshow("Original raster binary", result_binary)
     # cv2.waitKey(0)
 
 ################################
@@ -301,11 +304,14 @@ print('Image processing: '+METHOD)
 match METHOD:
     
     case 'candidate_areas': # Attempts to filter roads from image in just two calls to the erase_areas function
-        result_binary = erase_areas(result_binary, raster_image_gray, MAX_ROAD_WIDTH ** 2, blobs = True, black = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Attempts to remove circular markers from roadways on GB OS maps
-        result_binary = erase_matches(raster_image_gray, result_binary, './data/templates', 'tree-broadleaf.png', SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR)
-        result_binary = erase_matches(raster_image_gray, result_binary, './data/templates', 'tree-conifer.png', threshold=0.7, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR)
-        # result_binary = erase_matches(raster_image_gray, result_binary, './data/templates', 'road-survey-mark.png', threshold=1, rotation_step = 15, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) #  Finds millions of matches ?!?!?!
-        result_binary = erase_areas(result_binary, raster_image_gray,
+        result_binary, _ = erase_matches(raster_image_gray, result_binary, './data/templates', 'tree-broadleaf.png', SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR)
+        result_binary, _ = erase_matches(raster_image_gray, result_binary, './data/templates', 'tree-conifer.png', threshold=0.7, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR)
+        result_binary, _ = erase_areas(result_binary, raster_image_gray, MAX_ROAD_WIDTH ** 2, blobs = True, black = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Attempts to remove circular markers from roadways on GB OS maps
+        result_binary, _ = erase_areas(result_binary, raster_image_gray, MIN_ROAD_WIDTH+3, contours = False, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Try to close gaps in road lines
+        result_binary, _ = road_contours(raster_image_gray, binary_image = result_binary)
+        find_areas(raster_image_gray, SHOW_IMAGES = SHOW_IMAGES)
+        # result_binary, _ = erase_matches(raster_image_gray, result_binary, './data/templates', 'road-survey-mark.png', threshold=1, rotation_step = 15, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) #  Finds millions of matches ?!?!?!
+        result_binary, _ = erase_areas(result_binary, raster_image_gray,
             factor = 2 * MAX_ROAD_WIDTH / MIN_ROAD_WIDTH, 
             contour_width_max = 3 * MAX_ROAD_WIDTH, 
             convexity_min = .5, 
@@ -319,25 +325,25 @@ match METHOD:
     
     case 'progressive':
         # Testing a range of parameters that might be useful for machine learning.
-        result_binary = erase_matches(raster_image_gray, result_binary, './data/templates', 'tree-broadleaf.png', SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR)
-        result_binary = erase_matches(raster_image_gray, result_binary, './data/templates', 'tree-conifer.png', threshold=0.65, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR)
-        result_binary = erase_areas(result_binary, raster_image_gray, MAX_ROAD_WIDTH ** 2, blobs = True, black = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Attempts to remove circular markers from roadways on GB OS maps
-        result_binary = erase_areas(result_binary, raster_image_gray, 2, contours = False, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase white noise
-        result_binary = erase_areas(result_binary, raster_image_gray, 500, closed = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase white shapes
-        # result_binary = erase_areas(result_binary, raster_image_gray, 2, contours = False, black = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase black dots
-        # result_binary = erase_areas(result_binary, raster_image_gray, 50, closed = True, black = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase black shapes
-        # result_binary = erase_areas(result_binary, raster_image_gray, 120, closed = True, black = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase black shapes
-        # result_binary = erase_areas(result_binary, raster_image_gray, 200, black = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase black shapes
-        result_binary = erase_areas(result_binary, raster_image_gray, 2 * MAX_ROAD_WIDTH, contours = False, subtract = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase large white areas
-        # result_binary = erase_areas(result_binary, raster_image_gray, 500, closed = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase white shapes
-        # result_binary = erase_areas(result_binary, raster_image_gray, 1.5 * MAX_ROAD_WIDTH, contours = False, subtract = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase large white areas
-        result_binary = erase_areas(result_binary, raster_image_gray, 2/3 * MIN_ROAD_WIDTH, contours = False, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase narrow white areas
-        result_binary = erase_areas(result_binary, raster_image_gray, 2000, closed = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase white shapes
-        result_binary = erase_areas(result_binary, raster_image_gray, 3, contours = False, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase white noise
+        result_binary, _ = erase_matches(raster_image_gray, result_binary, './data/templates', 'tree-broadleaf.png', SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR)
+        result_binary, _ = erase_matches(raster_image_gray, result_binary, './data/templates', 'tree-conifer.png', threshold=0.65, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR)
+        result_binary, _ = erase_areas(result_binary, raster_image_gray, MAX_ROAD_WIDTH ** 2, blobs = True, black = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Attempts to remove circular markers from roadways on GB OS maps
+        result_binary, _ = erase_areas(result_binary, raster_image_gray, 2, contours = False, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase white noise
+        result_binary, _ = erase_areas(result_binary, raster_image_gray, 500, closed = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase white shapes
+        # result_binary, _ = erase_areas(result_binary, raster_image_gray, 2, contours = False, black = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase black dots
+        # result_binary, _ = erase_areas(result_binary, raster_image_gray, 50, closed = True, black = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase black shapes
+        # result_binary, _ = erase_areas(result_binary, raster_image_gray, 120, closed = True, black = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase black shapes
+        # result_binary, _ = erase_areas(result_binary, raster_image_gray, 200, black = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase black shapes
+        result_binary, _ = erase_areas(result_binary, raster_image_gray, 2 * MAX_ROAD_WIDTH, contours = False, subtract = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase large white areas
+        # result_binary, _ = erase_areas(result_binary, raster_image_gray, 500, closed = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase white shapes
+        # result_binary, _ = erase_areas(result_binary, raster_image_gray, 1.5 * MAX_ROAD_WIDTH, contours = False, subtract = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase large white areas
+        result_binary, _ = erase_areas(result_binary, raster_image_gray, 2/3 * MIN_ROAD_WIDTH, contours = False, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase narrow white areas
+        result_binary, _ = erase_areas(result_binary, raster_image_gray, 2000, closed = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase white shapes
+        result_binary, _ = erase_areas(result_binary, raster_image_gray, 3, contours = False, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase white noise
         
     case _: # Default 
-        result_binary = erase_areas(result_binary, raster_image_gray, MAX_ROAD_WIDTH ** 2, blobs = True, black = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Attempts to remove circular markers from roadways on GB OS maps
-
+        contours, skeleton, base64_images = road_contours(raster_image_gray, show_images = True)
+        
 # Attempt to bridge gaps in skeleton by dilation and re-skeletonization
 # def skeleton_contours(skeleton_binary, gap = 15, step = 1, SHOW_IMAGES = False): # Larger steps run risk of blurring
 #     print('Skeletonize the binary image and find contours ...')    
@@ -359,7 +365,7 @@ match METHOD:
 #         cv2.imwrite(os.path.join(OUTPUTDIR, 'Image with contours.png'), raster_image_contours)
 #         cv2.waitKey(0)
 #     return contours
-contours = skeleton_contours(result_binary, raster_image_gray, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR)
+# contours = skeleton_contours(result_binary, raster_image_gray, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR)
 
 #######################
 ## VECTOR PROCESSING ##
