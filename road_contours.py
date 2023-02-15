@@ -178,7 +178,7 @@ def road_contours(grayscale_image,
     ## Skeletonize
     print("Skeletonizing ...")
     skeleton = skeletonize(likely_roads / 255.).astype(np.uint8) * 255
-    contours = cv2.findContours(skeleton, cv2.RETR_LIST , cv2.CHAIN_APPROX_NONE)[0]
+    base64_images.append({"label": "Skeletonized likely roads", "image": base64.b64encode(cv2.imencode('.png', skeleton)[1]).decode("utf-8")}) 
     
 #######################
 ## VECTOR PROCESSING ##
@@ -186,6 +186,7 @@ def road_contours(grayscale_image,
     
     ## Divide contours (which are coincident loops) into singles lines, starting a new line at each junction
 
+    contours = cv2.findContours(skeleton, cv2.RETR_LIST , cv2.CHAIN_APPROX_NONE)[0]
     singular_contours = []
     visited_points = set()
     endpoints = set()
@@ -312,8 +313,7 @@ def road_contours(grayscale_image,
             cv2.polylines(visualisation, [coords], isClosed=False, color=(0, 255, 255, 255), thickness=2)
     
         base64_images.append({"label": "Segmented map image", "image": base64.b64encode(cv2.imencode('.png', visualisation)[1]).decode("utf-8")}) 
-        base64_images.append({"label": "Skeletonized likely roads", "image": base64.b64encode(cv2.imencode('.png', skeleton)[1]).decode("utf-8")}) 
-
+        
         if show_images:
             cv2.imshow("Binary Image", binary_image)
             cv2.imshow('skeleton', skeleton) 
