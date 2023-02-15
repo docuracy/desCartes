@@ -7,12 +7,16 @@ import cv2
 import numpy as np
 from skimage.morphology import skeletonize
 import base64
+import shapely.geometry as geometry
+from shapely.geometry import LineString, Point
+from shapely.ops import split
+import math
 
 def road_contours(grayscale_image, 
                   binary_image = "False", 
                   blur_size = "3", # Used to try to remove blemishes from image - greatly reduces number of spurious contours and consequent processing-time
                   binarization_threshold = "210",
-                  MAX_ROAD_WIDTH = "14", 
+                  MAX_ROAD_WIDTH = "20", 
                   MIN_ROAD_WIDTH = "6", 
                   convexity_min = ".9", 
                   min_size_factor = "10", # Multiplied by int(MAX_ROAD_WIDTH)^2 to give minimum size for a contour to be considered
@@ -54,8 +58,7 @@ def road_contours(grayscale_image,
         "under-inflation": [(255,0,255),.3,[],2], # PURPLE
         "over-inflation": [(255,255,0),.6,[],2], # TEAL
         "woodland": [(0,255,255),.3,[],2], # YELLOW
-        "likely_road_shape": [(0,0,255),.5,[],2], # RED
-        "likely_road_line": [(255,0,0),.9,[],2] # BLUE
+        "likely_road_shape": [(0,0,255),.5,[],2] # RED
         } 
     
     print('Finding road contours ...')
@@ -138,11 +141,7 @@ def road_contours(grayscale_image,
             continue # Reject contour
         elif inflation > double_roadwidth * inflation_factor:
             visualisation_contoursets["over-inflation"][2].append(contour) # Teal for over-inflation rejection
-            continue # Reject contour        
-        
-        
-        ## TO DO: Next step should be to test and filter emmentaler_contours against road templates, using contour orientation
-        
+            continue # Reject contour                
         
         if templating: # (Woodland templates rather than road templates)
             
@@ -180,7 +179,116 @@ def road_contours(grayscale_image,
     print("Skeletonizing ...")
     skeleton = skeletonize(likely_roads / 255.).astype(np.uint8) * 255
     contours = cv2.findContours(skeleton, cv2.RETR_LIST , cv2.CHAIN_APPROX_NONE)[0]
-    visualisation_contoursets["likely_road_line"][2] = contours # Blue for likely road lines
+    
+#######################
+## VECTOR PROCESSING ##
+#######################
+    
+    ## Divide contours (which are coincident loops) into singles lines, starting a new line at each junction
+
+    singular_contours = []
+    visited_points = set()
+    endpoints = set()
+    for contour in contours:
+        
+        previouspoint = tuple(contour[0][0])
+        visited_points.add(previouspoint)
+        endpoints.add(previouspoint)
+        current_contour = [[previouspoint]]
+        addingpoints = True
+        for i in range(1, len(contour) - 1):
+            point = tuple(contour[i][0])
+            
+            if addingpoints:
+                if not point in visited_points:
+                    current_contour.append([point])
+                else:
+                    if point in endpoints:
+                        current_contour.append([point]) # Line is returning to a previous junction
+                    else:
+                        endpoints.add(previouspoint) # Line has reversed direction
+                    singular_contours.append(np.array(current_contour))
+                    addingpoints = False
+            else:        
+                if not point in visited_points: 
+                    endpoints.add(previouspoint) # Line has passed a previous junction
+                    current_contour = [[previouspoint], [point]]
+                    addingpoints = True
+                    
+            visited_points.add(point)
+            previouspoint = point
+            
+    ## Break linestrings where they pass through endpoints
+    contour_list = singular_contours.copy()    
+    split_contours = []
+    while contour_list:
+        contour = contour_list.pop(0)
+        divide = False
+        for i in range(1, len(contour) - 1):
+            if tuple(contour[i][0]) in endpoints:
+                divide = True
+                split_contours.append(contour[:i+1])
+                contour_list.insert(0, contour[i+1:])
+                break
+        if not divide and len(contour) > 1:
+            split_contours.append(contour)
+    
+    lineStrings = []
+    for split_contour in split_contours:
+        lineStrings.append(geometry.LineString(np.array(split_contour).reshape(-1, 2)).simplify(2))
+    
+    ## Test the proximity of likely road edges at sample points along each lineString
+    visualisation = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
+    probable_roads = []
+    improbable_roads = []
+    for lineString in lineStrings:
+        testLength = lineString.length - MAX_ROAD_WIDTH # Do not test in proximity to junctions
+        if testLength <= 0:
+            improbable_roads.append(lineString)
+            continue
+        previousTest = None
+        residual = lineString
+        test_point_count = max(2, 1 + math.ceil(testLength / MAX_ROAD_WIDTH)) #  Test at least every MAX_ROAD_WIDTH pixels
+        interval_length = testLength / (test_point_count - 1)
+        previouspoint = lineString.interpolate(MAX_ROAD_WIDTH / 4)
+        # Iterate over the intervals and find the normal_vector at each one
+        for i in range(test_point_count):
+            test_distance = MAX_ROAD_WIDTH / 2 + interval_length * i
+            test_point = lineString.interpolate(test_distance)
+            cv2.circle(visualisation, (int(test_point.x), int(test_point.y)), 4, (0, 0, 255), -1)
+            normal_angle = np.pi/2 + np.arctan2(test_point.y - previouspoint.y, test_point.x - previouspoint.x)
+            normal_vector = np.array([-np.cos(normal_angle), np.sin(normal_angle)])
+    
+            # Test the binary image at points along the normal vector
+            likely_road = 0
+            for sign in [-1, 1]:
+                for d in range(math.ceil(MAX_ROAD_WIDTH / 2)):
+                    offset_pixel = (int(round(test_point.x + sign * d * normal_vector[0])), int(round(test_point.y - sign * d * normal_vector[1])))
+                    cv2.circle(visualisation, (int(offset_pixel[0]), int(offset_pixel[1])), 2, (0, 255, 0), -1)
+                    if offset_pixel[0] >= 0 and offset_pixel[0] < binary_image.shape[1] and offset_pixel[1] >= 0 and offset_pixel[1] < binary_image.shape[0] and binary_image[offset_pixel[1],offset_pixel[0]] == 0:
+                        likely_road += 1
+                        break
+            likely_road = likely_road == 2 # Must find road line on both sides
+            if i > 0:
+                if previousTest != likely_road:
+                    split_residual = split(residual, test_point)
+                    residual = split_residual.geoms[-1]
+                    if previousTest:
+                        probable_roads.append(split_residual.geoms[0])
+                    else:
+                        improbable_roads.append(split_residual.geoms[0])
+            previousTest = likely_road
+            previouspoint = test_point
+        if previousTest:
+            probable_roads.append(residual)
+        else:
+            improbable_roads.append(residual)
+            
+    base64_images.append({"label": "Road boundary checks", "image": base64.b64encode(cv2.imencode('.png', visualisation)[1]).decode("utf-8")}) 
+     
+###################
+## VISUALISATION ##
+###################
     
     if visualise:
         
@@ -193,6 +301,15 @@ def road_contours(grayscale_image,
             shaded = cv2.addWeighted(overlay, visualisation_contourset[1], visualisation, 1 - visualisation_contourset[1], 0) # Set opacity
             visualisation = np.where(shape == 255, shaded, visualisation) # Draw shading
             cv2.drawContours(visualisation, visualisation_contourset[2], -1, visualisation_contourset[0], visualisation_contourset[3]) # Draw outlines
+        
+        for improbable_road in improbable_roads:
+            coords = np.array(improbable_road.coords, np.int32)
+            coords = coords.reshape(-1, 1, 2)
+            cv2.polylines(visualisation, [coords], isClosed=False, color=(255, 0, 0, 255), thickness=1)
+        for probable_road in probable_roads:
+            coords = np.array(probable_road.coords, np.int32)
+            coords = coords.reshape(-1, 1, 2)
+            cv2.polylines(visualisation, [coords], isClosed=False, color=(0, 255, 255, 255), thickness=2)
     
         base64_images.append({"label": "Segmented map image", "image": base64.b64encode(cv2.imencode('.png', visualisation)[1]).decode("utf-8")}) 
         base64_images.append({"label": "Skeletonized likely roads", "image": base64.b64encode(cv2.imencode('.png', skeleton)[1]).decode("utf-8")}) 
