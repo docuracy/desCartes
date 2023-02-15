@@ -25,7 +25,9 @@ from pickle import TRUE
 # from image_processing import skeleton_contours, erase_matches, erase_areas
 from road_contours import road_contours
 import base64
-
+                
+## TO DO: Create location name from bounds and RASTER_TILE_URL so that maps can be re-used
+                
 LOCATION_NAME = str(uuid.uuid4())
 OUTPUTDIR = './output/' + LOCATION_NAME + '/'
 GEOTIFF_NAME = LOCATION_NAME + '.tiff'

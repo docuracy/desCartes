@@ -51,9 +51,9 @@ EXTENT_NORTHEAST_LAT, EXTENT_NORTHEAST_LNG = 51.968532168339586, -1.725002502295
 
 ## The location name will be used to name the directory where files are stored.
 ## If a geotiff already exist in this directory, it will be re-used, and the coordinates given above ignored.
-# LOCATION_NAME = 'longborough'
+LOCATION_NAME = 'longborough'
 # LOCATION_NAME = 'longborough-south'
-LOCATION_NAME = 'tormarton'
+# LOCATION_NAME = 'tormarton'
 
 ## Uncomment one of these methods, or create your own in the IMAGE PROCESSING CALLS section.
 ## Any name you type here will be used in creating a filename, so avoid funky characters.
