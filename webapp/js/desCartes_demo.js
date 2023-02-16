@@ -57,7 +57,7 @@ function showCandidateLines(response) {
 
     var thumbnailsContainer = $("<div>").addClass("thumbnails-container").appendTo(modalDialog);
 
-    response.base64_images.forEach(function(image, i) {
+	response.base64_images.forEach(function(image, i) {
 		var figure = $("<div>").addClass("figure").appendTo(thumbnailsContainer);
         var thumbnail = $("<img>").addClass("thumbnail").attr("src", "data:image/jpeg;base64," + image.image).appendTo(figure);
         var label = $("<div>").addClass("thumbnail-label").text((i+1)+'. '+image.label).appendTo(figure);
@@ -74,7 +74,8 @@ function showCandidateLines(response) {
         });
     });
 
-	var downloadButton = $("<button class='download'>").text("Download GeoPackage").appendTo(thumbnailsContainer);
+	$("<span class='comment'>To improve results, you may need to adjust the parameters before processing.</span>").appendTo(thumbnailsContainer);
+    var downloadButton = $("<button class='download'>").text("Download GeoPackage").appendTo(thumbnailsContainer);
 	downloadButton.click(function() {
 	    var blob = new Blob([response.GeoPackage.gpkg], {type: "application/x-sqlite3"});
 	    var downloadLink = document.createElement("a");
