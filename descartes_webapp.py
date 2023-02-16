@@ -25,12 +25,7 @@ from pickle import TRUE
 # from image_processing import skeleton_contours, erase_matches, erase_areas
 from road_contours import road_contours
 import base64
-                
-## TO DO: Create location name from bounds and RASTER_TILE_URL so that maps can be re-used
-                
-LOCATION_NAME = str(uuid.uuid4())
-OUTPUTDIR = './output/' + LOCATION_NAME + '/'
-GEOTIFF_NAME = LOCATION_NAME + '.tiff'
+import re
 
 RASTER_TILE_KEY = 'ySlCyGP2kmmfm9Dgtiqj' # TO USE THE URL GIVEN BELOW, GET YOUR OWN KEY FROM https://cloud.maptiler.com/account/keys/
 RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb10k1888/{z}/{x}/{y}.jpg?key=' + RASTER_TILE_KEY
@@ -50,7 +45,15 @@ def hello():
             if bounds:
                 EXTENT = bounds.split(",")
                 EXTENT = [float(x) for x in EXTENT]
-                mapfile = create_geotiff (RASTER_TILE_URL, OUTPUTDIR, GEOTIFF_NAME, EXTENT, RASTER_TILE_ZOOM)
+                
+                LOCATION_NAME = re.sub(r'https://|[{}/.]', '-', RASTER_TILE_URL).replace(',', '_').strip('-') + '-' + bounds.replace(',', '_')
+                OUTPUTDIR = './output/' + LOCATION_NAME + '/'
+                GEOTIFF_NAME = LOCATION_NAME + '.tiff'
+                
+                if os.path.exists(OUTPUTDIR + GEOTIFF_NAME):
+                    mapfile = OUTPUTDIR + GEOTIFF_NAME
+                else:
+                    mapfile = create_geotiff (RASTER_TILE_URL, OUTPUTDIR, GEOTIFF_NAME, EXTENT, RASTER_TILE_ZOOM)
                 
                 _, _, base64_images, vector_json = road_contours(mapfile, **args)
                 
