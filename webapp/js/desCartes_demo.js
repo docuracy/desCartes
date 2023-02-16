@@ -44,7 +44,7 @@ function showCandidateLines(response) {
     spinner(false);
 	var width = Math.round($(window).width() * .9);
 	var height = Math.round($(window).height() * .9);
-    var modalDialog = $("<div title='Click image to enlarge it. Close this dialog to continue processing'>").addClass("modal-dialog").appendTo("body");
+    var modalDialog = $("<div title='Click image to enlarge it, or Download GeoPackage of extracted road vectors.'>").addClass("modal-dialog").appendTo("body");
     modalDialog.dialog({
         width: width,
         height: height,
@@ -73,6 +73,17 @@ function showCandidateLines(response) {
             });
         });
     });
+
+	var downloadButton = $("<button class='download'>").text("Download GeoPackage").appendTo(thumbnailsContainer);
+	downloadButton.click(function() {
+	    var blob = new Blob([response.GeoPackage.gpkg], {type: "application/x-sqlite3"});
+	    var downloadLink = document.createElement("a");
+	    downloadLink.href = URL.createObjectURL(blob);
+	    downloadLink.download = "desCartes.gpkg";
+	    document.body.appendChild(downloadLink);
+	    downloadLink.click();
+	    document.body.removeChild(downloadLink);
+	})
 }
 
 $(document).ready(function() {

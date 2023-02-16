@@ -38,7 +38,7 @@ body {
 
 #instructions {
     float: right;
-    z-index: 9999;
+    z-index: 9997;
     position: absolute;
     width: 250px;
     top: 25px;
@@ -119,6 +119,13 @@ input[type="checkbox"] {
   max-height: 90%;
   border-radius: 4px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.download {
+	float: left;
+    clear: left;
+    background-color: yellow;
+    cursor: pointer;
 }
 
 .close-button {
