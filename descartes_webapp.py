@@ -7,10 +7,11 @@ import logging
 from flask import Flask, request, jsonify
 import uuid
 import os
+import shutil
+import datetime
 import rasterio
 import numpy as np
 import cv2
-import datetime
 from skimage.morphology import skeletonize
 from save_shapefile import save_shapefile
 import matplotlib.pyplot as plt
@@ -46,7 +47,7 @@ def hello():
                 EXTENT = bounds.split(",")
                 EXTENT = [float(x) for x in EXTENT]
                 
-                LOCATION_NAME = re.sub(r'https://|[{}/.]', '-', RASTER_TILE_URL).replace(',', '_').strip('-') + '-' + bounds.replace(',', '_')
+                LOCATION_NAME = re.sub(r'https://|[{}/.]', '-', RASTER_TILE_URL+ '-' + bounds).replace(',', '_').strip('-')
                 OUTPUTDIR = './output/' + LOCATION_NAME + '/'
                 GEOTIFF_NAME = LOCATION_NAME + '.tiff'
                 
@@ -57,6 +58,14 @@ def hello():
                 
                 _, _, base64_images, vector_json = road_contours(mapfile, **args)
                 
+                # Clean up output directory
+                now = datetime.datetime.now()
+                cutoff = now - datetime.timedelta(hours=8)
+                for item in os.listdir('./output/'):
+                    path = os.path.join('./output/', item)
+                    if os.path.isdir(path) and datetime.datetime.fromtimestamp(os.path.getctime(path)) < cutoff:
+                        shutil.rmtree(path)
+                        
                 return jsonify({"base64_images": base64_images, "GeoPackage": vector_json})
             else:
                 return jsonify({"message": "No bounds found in the request."})
