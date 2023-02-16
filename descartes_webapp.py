@@ -52,15 +52,9 @@ def hello():
                 EXTENT = [float(x) for x in EXTENT]
                 mapfile = create_geotiff (RASTER_TILE_URL, OUTPUTDIR, GEOTIFF_NAME, EXTENT, RASTER_TILE_ZOOM)
                 
-                # Open the geotiff using rasterio
-                with rasterio.open(mapfile) as raster:
-                    raster_image = raster.read()
+                _, _, base64_images, vector_json = road_contours(mapfile, **args)
                 
-                raster_image_gray = cv2.cvtColor(cv2.merge(raster_image[:3]), cv2.COLOR_BGR2GRAY)
-                
-                _,_,base64_images = road_contours(raster_image_gray, **args)
-                
-                return jsonify({"base64_images": base64_images})
+                return jsonify({"base64_images": base64_images, "GeoPackage": vector_json})
             else:
                 return jsonify({"message": "No bounds found in the request."})
         else:

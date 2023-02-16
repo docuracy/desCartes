@@ -3,16 +3,18 @@
 
 '''
 
+import rasterio
 import cv2
 import numpy as np
 from skimage.morphology import skeletonize
 import base64
 import shapely.geometry as geometry
-from shapely.geometry import LineString, Point
-from shapely.ops import split
+from shapely.geometry import MultiLineString, LineString, Point
+from shapely.ops import split, transform
 import math
+import geopandas as gpd
 
-def road_contours(grayscale_image, 
+def road_contours(mapfile,
                   binary_image = "False", 
                   blur_size = "3", # Used to try to remove blemishes from image - greatly reduces number of spurious contours and consequent processing-time
                   binarization_threshold = "210",
@@ -50,6 +52,12 @@ def road_contours(grayscale_image,
                 return binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, visualise, show_images
 
     binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, visualise, show_images = cast_params(binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, visualise, show_images)
+    
+    # Open the geotiff using rasterio
+    with rasterio.open(mapfile) as raster:
+        raster_image = raster.read()
+    
+    grayscale_image = cv2.cvtColor(cv2.merge(raster_image[:3]), cv2.COLOR_BGR2GRAY)
     
     # Initialise visualisation arrays
     visualisation_contoursets = {
@@ -184,8 +192,7 @@ def road_contours(grayscale_image,
 ## VECTOR PROCESSING ##
 #######################
     
-    ## Divide contours (which are coincident loops) into singles lines, starting a new line at each junction
-
+    ## Divide contours (which are coincident loops) into single lines, starting a new line at each junction
     contours = cv2.findContours(skeleton, cv2.RETR_LIST , cv2.CHAIN_APPROX_NONE)[0]
     singular_contours = []
     visited_points = set()
@@ -286,6 +293,13 @@ def road_contours(grayscale_image,
             improbable_roads.append(residual)
             
     base64_images.append({"label": "Road boundary checks", "image": base64.b64encode(cv2.imencode('.png', visualisation)[1]).decode("utf-8")}) 
+    
+    # Reproject LineStrings to original raster CRS
+    probable_roads_transformed, improbable_roads_transformed = [[transform(lambda x, y: rasterio.transform.xy(raster.transform, y, x), linestring) for linestring in linestrings] for linestrings in [probable_roads, improbable_roads]]
+    gdf = gpd.GeoDataFrame(geometry=[MultiLineString(probable_roads_transformed), MultiLineString(improbable_roads_transformed)])
+    gdf['name'] = ['probable_roads', 'improbable_roads']
+    gdf.crs = "EPSG:4326"
+    vector_json = {"gpkg": gdf.to_json()}
      
 ###################
 ## VISUALISATION ##
@@ -320,4 +334,4 @@ def road_contours(grayscale_image,
             cv2.imshow('likely_roads', visualisation) 
             cv2.waitKey(0)
     
-    return contours, skeleton, base64_images
+    return contours, skeleton, base64_images, vector_json
