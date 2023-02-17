@@ -336,7 +336,8 @@ def road_contours(map_directory,
     # Reproject LineStrings to original raster CRS
     candidate_roads_EPSG4326 = [transform(lambda x, y: rasterio.transform.xy(raster.transform, y, x), linestring) for linestring in lineStrings]
     gdf = gpd.GeoDataFrame(geometry=[MultiLineString(candidate_roads_EPSG4326)])
-    gdf['name'] = ['candidate_roads']
+    gdf = gdf.explode(index_parts=True)  # Create a new row for each LineString
+    gdf['name'] = 'candidate_roads'
     gdf['proximity'] = proximity
     gdf.crs = "EPSG:4326"
     vector_json = {"gpkg": gdf.to_json()}
