@@ -102,7 +102,7 @@ def road_contours(map_directory,
     height, width = binary_image.shape[:2]
 
     base64_images = []
-    base64_images.append({"label": "Thresholded map image", "image": base64.b64encode(cv2.imencode('.png', binary_image)[1]).decode("utf-8")})      
+    base64_images.append({"label": "Thresholded map image", "image": base64.b64encode(cv2.imencode('.jpg', binary_image)[1]).decode("utf-8")})      
      
     # Thin all black lines to 1px
     binary_image = np.invert(binary_image)  
@@ -132,7 +132,7 @@ def road_contours(map_directory,
             contour_areas.append(0)   
     print("... Done.")
     
-    base64_images.append({"label": "Thinned map image", "image": base64.b64encode(cv2.imencode('.png', binary_image)[1]).decode("utf-8")})
+    base64_images.append({"label": "Thinned map image", "image": base64.b64encode(cv2.imencode('.jpg', binary_image)[1]).decode("utf-8")})
     
     likely_roads = []
     for i, contour in enumerate(contours):
@@ -210,7 +210,7 @@ def road_contours(map_directory,
     ## Skeletonize
     print("Skeletonizing ...")
     skeleton = skeletonize(likely_roads / 255.).astype(np.uint8) * 255
-    base64_images.append({"label": "Skeletonized likely roads", "image": base64.b64encode(cv2.imencode('.png', skeleton)[1]).decode("utf-8")}) 
+    base64_images.append({"label": "Skeletonized likely roads", "image": base64.b64encode(cv2.imencode('.jpg', skeleton)[1]).decode("utf-8")}) 
     
 #######################
 ## VECTOR PROCESSING ##
@@ -327,7 +327,7 @@ def road_contours(map_directory,
                         break
             previouspoint = test_point
             
-    base64_images.append({"label": "Road boundary checks (with modern OS roads)", "image": base64.b64encode(cv2.imencode('.png', proximity_visualisation)[1]).decode("utf-8")})
+    base64_images.append({"label": "Road boundary checks (with modern OS roads)", "image": base64.b64encode(cv2.imencode('.jpg', proximity_visualisation)[1]).decode("utf-8")})
     
     # TO DO: Split lineStrings at modern road boundaries 
     # - find closest point to intersection of modern roads
