@@ -31,7 +31,7 @@ import geopandas as gpd
 from contours_to_linestrings import contours_to_linestrings
 from road_templates import score_linestrings
 from tiles_to_tiff import create_geotiff
-from extract_modern_roads import extract_modern_roads
+from extract_modern_roads import extract_modern_roads, transform_linestrings
 from patch_linestrings import merge_groups
 from pickle import TRUE
 from image_processing import skeleton_contours, erase_matches, erase_areas
@@ -46,14 +46,15 @@ from road_contours import road_contours
 # A simple way to get the extent coordinates is to open a Google map in a browser,
 # then right-click on the south-west corner of the area of interest. Then click on 
 # the displayed coordinates and then paste them below. Repeat for the north-east corner.
-EXTENT_SOUTHWEST_LAT, EXTENT_SOUTHWEST_LNG = 51.95519035608032, -1.7566191914759899,
-EXTENT_NORTHEAST_LAT, EXTENT_NORTHEAST_LNG = 51.968532168339586, -1.725002502295734
+EXTENT_SOUTHWEST_LAT, EXTENT_SOUTHWEST_LNG = 51.76671059545997, 0.7862768254319205,
+EXTENT_NORTHEAST_LAT, EXTENT_NORTHEAST_LNG = 51.77743715016658, 0.8063655953527965
 
 ## The location name will be used to name the directory where files are stored.
 ## If a geotiff already exist in this directory, it will be re-used, and the coordinates given above ignored.
 # LOCATION_NAME = 'longborough'
 # LOCATION_NAME = 'longborough-south'
-LOCATION_NAME = 'tormarton'
+# LOCATION_NAME = 'tormarton'
+LOCATION_NAME = 'tolleshunt'
 
 ## Uncomment one of these methods, or create your own in the IMAGE PROCESSING CALLS section.
 ## Any name you type here will be used in creating a filename, so avoid funky characters.
@@ -77,7 +78,7 @@ MIN_ROAD_WIDTH = 3 # Should be an odd number
 
 DATADIR = './data/'
 OUTPUTDIR = './output/' + LOCATION_NAME + '/'
-GEOTIFF_NAME = LOCATION_NAME + '.tiff'
+GEOTIFF_NAME = 'geo.tiff'
 TEMPLATE_SAMPLE = 10  # pixel distance between sample points to test for each candidate LineString
 MATCH_SCORE = .4 # Minimum pass score for structural_similarity in LineString filter
 FILTER_SCORE = 20 # Reject road candidates failing to meet this minimum score
@@ -103,7 +104,7 @@ if os.path.exists(OUTPUTDIR + GEOTIFF_NAME):
     mapfile = OUTPUTDIR + GEOTIFF_NAME
 else:
     mapfile = create_geotiff (RASTER_TILE_URL, OUTPUTDIR, GEOTIFF_NAME, EXTENT, RASTER_TILE_ZOOM)
-    extract_modern_roads(DATADIR, mapfile, OUTPUTDIR, ROADFILE, LOCATION_NAME, EXTENT)
+    extract_modern_roads(DATADIR, OUTPUTDIR, ROADFILE, LOCATION_NAME, EXTENT, shapefile = True)
 
 # Open the geotiff using rasterio
 with rasterio.open(mapfile) as raster:
@@ -342,7 +343,7 @@ match METHOD:
         result_binary, _ = erase_areas(result_binary, raster_image_gray, 3, contours = False, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase white noise
         
     case _: # Default 
-        contours, skeleton, base64_images = road_contours(mapfile, show_images = True)
+        contours, skeleton, base64_images = road_contours(OUTPUTDIR, show_images = True)
         
 # Attempt to bridge gaps in skeleton by dilation and re-skeletonization
 # def skeleton_contours(skeleton_binary, gap = 15, step = 1, SHOW_IMAGES = False): # Larger steps run risk of blurring

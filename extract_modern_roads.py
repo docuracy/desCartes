@@ -6,25 +6,33 @@ which lie within the extent of a given geotiff.
 
 '''
 
-import subprocess, os
-from shapely.geometry import Polygon, box
-# from osgeo import gdal
-# from osgeo import ogr
-# from osgeo import osr
-import pandas as pd
-import geopandas as gp
+import os
+from shapely.geometry import box
+import geopandas as gpd
+from shapely.geometry import LineString
+import rasterio.transform
 
-def extract_modern_roads(DATADIR, mapfile, OUTPUTDIR, ROADFILE, LOCATION_NAME, EXTENT):
+def transform_linestrings(directory, transformation):
+    # Read the linestrings from the GeoPackage
+    gdf = gpd.read_file(directory + 'modern_roads.gpkg', layer='modern_roads')
     
-    # Use ogr2ogr to extract the LineStrings from the .gpkg file
-    ogrcmd = """ogr2ogr -f "ESRI Shapefile" -nlt LINESTRING -explodecollections -spat %s %s %s %s "%s" "%s" """%(EXTENT[0], EXTENT[1], EXTENT[2], EXTENT[3], OUTPUTDIR, DATADIR+ROADFILE)
-    response = subprocess.check_output(ogrcmd, shell=True)
+    # Get the coordinates of the linestrings as a list of tuples, then transform to pixel coordinates
+    coords_list = list(gdf.geometry.apply(lambda geom: list(geom.coords)).values)
+    transformed_gdf = gpd.GeoDataFrame(geometry=gpd.GeoSeries([LineString([(coord[1], coord[0]) for coord in [rasterio.transform.rowcol(transformation, coord[0], coord[1]) for coord in coords]]) for coords in coords_list]))
+
+    return transformed_gdf # as a GeoDataFrame 
+
+def extract_modern_roads(DATADIR, OUTPUTDIR, ROADFILE, LOCATION_NAME, EXTENT, shapefile = False):
     
-    # Now crop the LineStrings to the map extent
-    root, ext = os.path.splitext(ROADFILE)
-    shapefile = OUTPUTDIR + root + '.shp'
-    gdf = gp.read_file(shapefile)
-    bbox = box(*EXTENT)
-    cropped_gdf = gp.clip(gdf, bbox)
+    gdf = gpd.read_file(
+        DATADIR + ROADFILE,
+        layer = os.path.splitext(ROADFILE)[0],
+        bbox = tuple(EXTENT)
+    )
+    # Specifiy EXTENT above does not cause linestrings partly within the extent to be cropped to the extent
+    cropped_gdf = gpd.clip(gdf, box(*EXTENT))
     cropped_gdf = cropped_gdf[~cropped_gdf.is_empty]
-    cropped_gdf.to_file(shapefile)
+    cropped_gdf.to_file(OUTPUTDIR + 'modern_roads.gpkg', driver="GPKG")
+    if shapefile:
+        root, _ = os.path.splitext(ROADFILE)
+        cropped_gdf.to_file(OUTPUTDIR + root + '.shp')

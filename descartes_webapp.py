@@ -5,27 +5,12 @@
 
 import logging
 from flask import Flask, request, jsonify
-import uuid
 import os
 import shutil
 import datetime
-import rasterio
-import numpy as np
-import cv2
-from skimage.morphology import skeletonize
-from save_shapefile import save_shapefile
-import matplotlib.pyplot as plt
-import math
-import geopandas as gpd
-from contours_to_linestrings import contours_to_linestrings
-from road_templates import score_linestrings
 from tiles_to_tiff import create_geotiff
 from extract_modern_roads import extract_modern_roads
-from patch_linestrings import merge_groups
-from pickle import TRUE
-# from image_processing import skeleton_contours, erase_matches, erase_areas
 from road_contours import road_contours
-import base64
 import re
 
 RASTER_TILE_KEY = 'ySlCyGP2kmmfm9Dgtiqj' # TO USE THE URL GIVEN BELOW, GET YOUR OWN KEY FROM https://cloud.maptiler.com/account/keys/
@@ -34,6 +19,9 @@ RASTER_TILE_ZOOM = 17
 
 MAX_ROAD_WIDTH = 15  # Pixel width of road between border lines. Should be an odd number
 MIN_ROAD_WIDTH = 3 # Should be an odd number
+
+DATADIR = './data/'
+MODERN_ROADFILE = 'OS_Open_Roads_no-motorways_EPSG4326.gpkg'
 
 app = Flask(__name__)
 
@@ -49,14 +37,13 @@ def hello():
                 
                 LOCATION_NAME = re.sub(r'https://|[{}/.]', '-', RASTER_TILE_URL+ '-' + bounds).replace(',', '_').strip('-')
                 OUTPUTDIR = './output/' + LOCATION_NAME + '/'
-                GEOTIFF_NAME = LOCATION_NAME + '.tiff'
+                GEOTIFF_NAME = 'geo.tiff'
+                    
+                if not os.path.exists(OUTPUTDIR + GEOTIFF_NAME):
+                    create_geotiff (RASTER_TILE_URL, OUTPUTDIR, GEOTIFF_NAME, EXTENT, RASTER_TILE_ZOOM)
+                    extract_modern_roads(DATADIR, OUTPUTDIR, MODERN_ROADFILE, LOCATION_NAME, EXTENT)
                 
-                if os.path.exists(OUTPUTDIR + GEOTIFF_NAME):
-                    mapfile = OUTPUTDIR + GEOTIFF_NAME
-                else:
-                    mapfile = create_geotiff (RASTER_TILE_URL, OUTPUTDIR, GEOTIFF_NAME, EXTENT, RASTER_TILE_ZOOM)
-                
-                _, _, base64_images, vector_json = road_contours(mapfile, **args)
+                _, _, base64_images, vector_json = road_contours(OUTPUTDIR, **args)
                 
                 # Clean up output directory
                 now = datetime.datetime.now()

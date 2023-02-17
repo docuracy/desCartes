@@ -13,8 +13,17 @@ from shapely.geometry import MultiLineString, LineString, Point
 from shapely.ops import split, transform
 import math
 import geopandas as gpd
+from itertools import combinations
+from extract_modern_roads import transform_linestrings
 
-def road_contours(mapfile,
+def draw_linestrings_on_image(bgr_image, linestring_gdf, linestring_color, linestring_thickness):
+    for _, linestring in linestring_gdf.iterrows():
+        coords = linestring['geometry'].coords[:]
+        pixel_coords = [(int(x), int(y)) for x, y in coords]
+        cv2.polylines(bgr_image, [np.array(pixel_coords)], False, linestring_color, thickness=linestring_thickness)
+    return bgr_image
+
+def road_contours(map_directory,
                   binary_image = "False", 
                   blur_size = "3", # Used to try to remove blemishes from image - greatly reduces number of spurious contours and consequent processing-time
                   binarization_threshold = "210",
@@ -23,7 +32,7 @@ def road_contours(mapfile,
                   convexity_min = ".9", 
                   min_size_factor = "10", # Multiplied by int(MAX_ROAD_WIDTH)^2 to give minimum size for a contour to be considered
                   inflation_factor = "2.3", # Multiplied by int(MAX_ROAD_WIDTH) to limit average breadth of a contour perpendicular to its skeleton
-                  gap_close = "3", # For closing gaps between likely roads
+                  gap_close = "20", # For closing gaps between likely roads
                   templating = "True",
                   template_dir = './data/templates', 
                   template_filenames = ['tree-broadleaf.png', 'tree-conifer.png'], 
@@ -54,8 +63,9 @@ def road_contours(mapfile,
     binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, visualise, show_images = cast_params(binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, visualise, show_images)
     
     # Open the geotiff using rasterio
-    with rasterio.open(mapfile) as raster:
+    with rasterio.open(map_directory + 'geo.tiff') as raster:
         raster_image = raster.read()
+    modern_roads = transform_linestrings(map_directory, raster.transform)
     
     grayscale_image = cv2.cvtColor(cv2.merge(raster_image[:3]), cv2.COLOR_BGR2GRAY)
     
@@ -178,10 +188,10 @@ def road_contours(mapfile,
     
     likely_roads = sum(likely_roads)
     
-    ## Next, dilate/erode to close any *small* gaps in road sections
-    print("Dilating ...")
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (gap_close, gap_close))
-    likely_roads = cv2.dilate(likely_roads, kernel, iterations=1)        
+    # ## Next, dilate/erode to close any *small* gaps in road sections
+    # print("Dilating ...")
+    # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (gap_close, gap_close))
+    # likely_roads = cv2.dilate(likely_roads, kernel, iterations=1)        
     
     ## Skeletonize
     print("Skeletonizing ...")
@@ -245,8 +255,33 @@ def road_contours(mapfile,
     for split_contour in split_contours:
         lineStrings.append(geometry.LineString(np.array(split_contour).reshape(-1, 2)).simplify(2))
     
+    ## Now create new LineStrings to patch short gaps between potential road lines
+    used_endpoints = set()
+    disjointed = set()
+    
+    for i, line in enumerate(lineStrings):
+        for point in [line.coords[0], line.coords[-1]]:
+            if point in used_endpoints:
+                continue
+            used_endpoints.add(Point(point))
+            shared = False
+            for k, other in enumerate(lineStrings):
+                if i == k:
+                    continue
+                if point in [other.coords[0], other.coords[-1]]:
+                    shared = True
+                    break
+            if not shared:
+                disjointed.add(Point(point))
+                break  
+
+    for point1, point2 in combinations(used_endpoints, 2):
+        if (point1 in disjointed or point2 in disjointed) and point1.distance(point2) <= gap_close:
+            lineStrings.append(LineString([point1, point2]))
+    
     ## Test the proximity of likely road edges at sample points along each lineString
-    visualisation = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
+    proximity_visualisation = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
+    proximity_visualisation = draw_linestrings_on_image(proximity_visualisation, modern_roads, linestring_color = (0, 255, 255), linestring_thickness = 3)
     probable_roads = []
     improbable_roads = []
     for lineString in lineStrings:
@@ -263,7 +298,7 @@ def road_contours(mapfile,
         for i in range(test_point_count):
             test_distance = MAX_ROAD_WIDTH / 2 + interval_length * i
             test_point = lineString.interpolate(test_distance)
-            cv2.circle(visualisation, (int(test_point.x), int(test_point.y)), 4, (0, 0, 255), -1)
+            cv2.circle(proximity_visualisation, (int(test_point.x), int(test_point.y)), 4, (0, 0, 255), -1)
             normal_angle = np.pi/2 + np.arctan2(test_point.y - previouspoint.y, test_point.x - previouspoint.x)
             normal_vector = np.array([-np.cos(normal_angle), np.sin(normal_angle)])
     
@@ -272,7 +307,7 @@ def road_contours(mapfile,
             for sign in [-1, 1]:
                 for d in range(math.ceil(MAX_ROAD_WIDTH / 2)):
                     offset_pixel = (int(round(test_point.x + sign * d * normal_vector[0])), int(round(test_point.y - sign * d * normal_vector[1])))
-                    cv2.circle(visualisation, (int(offset_pixel[0]), int(offset_pixel[1])), 2, (0, 255, 0), -1)
+                    cv2.circle(proximity_visualisation, (int(offset_pixel[0]), int(offset_pixel[1])), 2, (0, 255, 0), -1)
                     if offset_pixel[0] >= 0 and offset_pixel[0] < binary_image.shape[1] and offset_pixel[1] >= 0 and offset_pixel[1] < binary_image.shape[0] and binary_image[offset_pixel[1],offset_pixel[0]] == 0:
                         likely_road += 1
                         break
@@ -292,7 +327,7 @@ def road_contours(mapfile,
         else:
             improbable_roads.append(residual)
             
-    base64_images.append({"label": "Road boundary checks", "image": base64.b64encode(cv2.imencode('.png', visualisation)[1]).decode("utf-8")}) 
+    base64_images.append({"label": "Road boundary checks (with modern OS roads)", "image": base64.b64encode(cv2.imencode('.png', proximity_visualisation)[1]).decode("utf-8")})
     
     # Reproject LineStrings to original raster CRS
     probable_roads_transformed, improbable_roads_transformed = [[transform(lambda x, y: rasterio.transform.xy(raster.transform, y, x), linestring) for linestring in linestrings] for linestrings in [probable_roads, improbable_roads]]
@@ -331,6 +366,7 @@ def road_contours(mapfile,
         if show_images:
             cv2.imshow("Binary Image", binary_image)
             cv2.imshow('skeleton', skeleton) 
+            cv2.imshow('proximity_visualisation', proximity_visualisation) 
             cv2.imshow('likely_roads', visualisation) 
             cv2.waitKey(0)
     
