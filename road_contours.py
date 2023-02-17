@@ -363,7 +363,7 @@ def road_contours(map_directory,
             coords = coords.reshape(-1, 1, 2)
             cv2.polylines(visualisation, [coords], isClosed=False, color=(0, 255, 255), thickness=2)
     
-        base64_images.append({"label": "Segmented map image", "image": base64.b64encode(cv2.imencode('.png', visualisation)[1]).decode("utf-8")}) 
+        base64_images.append({"label": "Segmented map image", "image": base64.b64encode(cv2.imencode('.jpg', visualisation)[1]).decode("utf-8")}) 
         
         if show_images:
             cv2.imshow("Binary Image", binary_image)
