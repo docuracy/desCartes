@@ -9,7 +9,7 @@ import numpy as np
 from skimage.morphology import skeletonize
 import base64
 import shapely.geometry as geometry
-from shapely.geometry import MultiLineString, LineString, Point
+from shapely.geometry import MultiLineString, LineString, Point, box
 from shapely.ops import split, transform
 import math
 import geopandas as gpd
@@ -22,6 +22,19 @@ def draw_linestrings_on_image(bgr_image, linestring_gdf, linestring_color, lines
         pixel_coords = [(int(x), int(y)) for x, y in coords]
         cv2.polylines(bgr_image, [np.array(pixel_coords)], False, linestring_color, thickness=linestring_thickness)
     return bgr_image
+
+def get_nearest_linestring(gdf, geoindex, test_point, max_distance):
+    x, y = test_point.x, test_point.y
+    candidate_indices = geoindex.query(box(x - max_distance, y - max_distance, x + max_distance, y + max_distance))
+    if len(candidate_indices) < 1:
+        return [False,False]
+    candidate_distances = [test_point.distance(gdf.geometry.loc[index]) for index in candidate_indices]
+    candidates = list(zip(candidate_indices, candidate_distances))
+    candidates.sort(key=lambda x: x[1])
+    closest_id, closest_distance = [gdf.iloc[candidates[0][0]]['id'], candidates[0][1]]
+    if closest_distance > max_distance:
+        return [False,False]
+    return [closest_distance, closest_id]
 
 def road_contours(map_directory,
                   binary_image = "False", 
@@ -66,6 +79,7 @@ def road_contours(map_directory,
     with rasterio.open(map_directory + 'geo.tiff') as raster:
         raster_image = raster.read()
     modern_roads = transform_linestrings(map_directory, raster.transform)
+    modern_roads_sindex = modern_roads.sindex
     
     grayscale_image = cv2.cvtColor(cv2.merge(raster_image[:3]), cv2.COLOR_BGR2GRAY)
     
@@ -279,60 +293,51 @@ def road_contours(map_directory,
         if (point1 in disjointed or point2 in disjointed) and point1.distance(point2) <= gap_close:
             lineStrings.append(LineString([point1, point2]))
     
-    ## Test the proximity of likely road edges at sample points along each lineString
+    ## Measure the proximity of modern roads and likely road edges at sample points along each lineString
     proximity_visualisation = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
     proximity_visualisation = draw_linestrings_on_image(proximity_visualisation, modern_roads, linestring_color = (0, 255, 255), linestring_thickness = 3)
-    probable_roads = []
-    improbable_roads = []
+    proximity = []
     for lineString in lineStrings:
+        proximity.append([])
         testLength = lineString.length - MAX_ROAD_WIDTH # Do not test in proximity to junctions
         if testLength <= 0:
-            improbable_roads.append(lineString)
             continue
-        previousTest = None
-        residual = lineString
         test_point_count = max(2, 1 + math.ceil(testLength / MAX_ROAD_WIDTH)) #  Test at least every MAX_ROAD_WIDTH pixels
         interval_length = testLength / (test_point_count - 1)
         previouspoint = lineString.interpolate(MAX_ROAD_WIDTH / 4)
         # Iterate over the intervals and find the normal_vector at each one
         for i in range(test_point_count):
             test_distance = MAX_ROAD_WIDTH / 2 + interval_length * i
+            proximity[-1].append([test_distance])
             test_point = lineString.interpolate(test_distance)
+            proximity[-1][-1].extend(get_nearest_linestring(modern_roads, modern_roads_sindex, test_point, 3 * MAX_ROAD_WIDTH))
             cv2.circle(proximity_visualisation, (int(test_point.x), int(test_point.y)), 4, (0, 0, 255), -1)
             normal_angle = np.pi/2 + np.arctan2(test_point.y - previouspoint.y, test_point.x - previouspoint.x)
             normal_vector = np.array([-np.cos(normal_angle), np.sin(normal_angle)])
     
             # Test the binary image at points along the normal vector
-            likely_road = 0
             for sign in [-1, 1]:
+                proximity[-1][-1].append(False)
                 for d in range(math.ceil(MAX_ROAD_WIDTH / 2)):
                     offset_pixel = (int(round(test_point.x + sign * d * normal_vector[0])), int(round(test_point.y - sign * d * normal_vector[1])))
                     cv2.circle(proximity_visualisation, (int(offset_pixel[0]), int(offset_pixel[1])), 2, (0, 255, 0), -1)
                     if offset_pixel[0] >= 0 and offset_pixel[0] < binary_image.shape[1] and offset_pixel[1] >= 0 and offset_pixel[1] < binary_image.shape[0] and binary_image[offset_pixel[1],offset_pixel[0]] == 0:
-                        likely_road += 1
+                        # likely_road += 1
+                        proximity[-1][-1][-1] = d
                         break
-            likely_road = likely_road == 2 # Must find road line on both sides
-            if i > 0:
-                if previousTest != likely_road:
-                    split_residual = split(residual, test_point)
-                    residual = split_residual.geoms[-1]
-                    if previousTest:
-                        probable_roads.append(split_residual.geoms[0])
-                    else:
-                        improbable_roads.append(split_residual.geoms[0])
-            previousTest = likely_road
             previouspoint = test_point
-        if previousTest:
-            probable_roads.append(residual)
-        else:
-            improbable_roads.append(residual)
             
     base64_images.append({"label": "Road boundary checks (with modern OS roads)", "image": base64.b64encode(cv2.imencode('.png', proximity_visualisation)[1]).decode("utf-8")})
     
+    # TO DO: Split lineStrings at modern road boundaries 
+    # - find closest point to intersection of modern roads
+    # - be sure to update proximity distances (first item in array)
+    
     # Reproject LineStrings to original raster CRS
-    probable_roads_transformed, improbable_roads_transformed = [[transform(lambda x, y: rasterio.transform.xy(raster.transform, y, x), linestring) for linestring in linestrings] for linestrings in [probable_roads, improbable_roads]]
-    gdf = gpd.GeoDataFrame(geometry=[MultiLineString(probable_roads_transformed), MultiLineString(improbable_roads_transformed)])
-    gdf['name'] = ['probable_roads', 'improbable_roads']
+    candidate_roads_EPSG4326 = [transform(lambda x, y: rasterio.transform.xy(raster.transform, y, x), linestring) for linestring in lineStrings]
+    gdf = gpd.GeoDataFrame(geometry=[MultiLineString(candidate_roads_EPSG4326)])
+    gdf['name'] = ['candidate_roads']
+    gdf['proximity'] = proximity
     gdf.crs = "EPSG:4326"
     vector_json = {"gpkg": gdf.to_json()}
      
@@ -352,14 +357,10 @@ def road_contours(map_directory,
             visualisation = np.where(shape == 255, shaded, visualisation) # Draw shading
             cv2.drawContours(visualisation, visualisation_contourset[2], -1, visualisation_contourset[0], visualisation_contourset[3]) # Draw outlines
         
-        for improbable_road in improbable_roads:
-            coords = np.array(improbable_road.coords, np.int32)
+        for linestring in lineStrings:
+            coords = np.array(linestring.coords, np.int32)
             coords = coords.reshape(-1, 1, 2)
-            cv2.polylines(visualisation, [coords], isClosed=False, color=(255, 0, 0, 255), thickness=1)
-        for probable_road in probable_roads:
-            coords = np.array(probable_road.coords, np.int32)
-            coords = coords.reshape(-1, 1, 2)
-            cv2.polylines(visualisation, [coords], isClosed=False, color=(0, 255, 255, 255), thickness=2)
+            cv2.polylines(visualisation, [coords], isClosed=False, color=(0, 255, 255), thickness=2)
     
         base64_images.append({"label": "Segmented map image", "image": base64.b64encode(cv2.imencode('.png', visualisation)[1]).decode("utf-8")}) 
         
@@ -367,7 +368,7 @@ def road_contours(map_directory,
             cv2.imshow("Binary Image", binary_image)
             cv2.imshow('skeleton', skeleton) 
             cv2.imshow('proximity_visualisation', proximity_visualisation) 
-            cv2.imshow('likely_roads', visualisation) 
+            cv2.imshow('candidate_roads', visualisation) 
             cv2.waitKey(0)
     
     return contours, skeleton, base64_images, vector_json

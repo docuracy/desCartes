@@ -19,7 +19,8 @@ def transform_linestrings(directory, transformation):
     # Get the coordinates of the linestrings as a list of tuples, then transform to pixel coordinates
     coords_list = list(gdf.geometry.apply(lambda geom: list(geom.coords)).values)
     transformed_gdf = gpd.GeoDataFrame(geometry=gpd.GeoSeries([LineString([(coord[1], coord[0]) for coord in [rasterio.transform.rowcol(transformation, coord[0], coord[1]) for coord in coords]]) for coords in coords_list]))
-
+    transformed_gdf['id'] = gdf['id'].values
+    
     return transformed_gdf # as a GeoDataFrame 
 
 def extract_modern_roads(DATADIR, OUTPUTDIR, ROADFILE, LOCATION_NAME, EXTENT, shapefile = False):
