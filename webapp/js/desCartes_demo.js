@@ -77,17 +77,18 @@ function showCandidateLines(response) {
 	$("<span class='comment'>To improve results, you may need to adjust the parameters before processing.</span>").appendTo(thumbnailsContainer);
 	var downloadButton = $("<button class='download'>").text("Download GeoPackage").appendTo(thumbnailsContainer);
 	downloadButton.click(function() {
-	    fetch(response.GeoPackage.gpkg)
-	        .then(response => response.blob())
-	        .then(blob => {
-	            var downloadLink = document.createElement("a");
-	            downloadLink.href = URL.createObjectURL(blob);
-	            downloadLink.download = "desCartes.gpkg";
-	            document.body.appendChild(downloadLink);
-	            downloadLink.click();
-	            document.body.removeChild(downloadLink);
-	        })
-	        .catch(error => console.log(error));
+	    var binary = atob(response.file);
+	    var byteArray = new Uint8Array(binary.length);
+	    for (var i = 0; i < binary.length; i++) {
+	        byteArray[i] = binary.charCodeAt(i);
+	    }
+	    var blob = new Blob([byteArray], { type: "application/x-sqlite3" });
+	    var downloadLink = document.createElement("a");
+	    downloadLink.href = URL.createObjectURL(blob);
+	    downloadLink.download = "filename";
+	    document.body.appendChild(downloadLink);
+	    downloadLink.click();
+	    document.body.removeChild(downloadLink);
 	})
 
 }
