@@ -15,6 +15,7 @@ import math
 import geopandas as gpd
 from itertools import combinations
 from extract_modern_roads import transform_linestrings
+import json
 
 def draw_linestrings_on_image(bgr_image, linestring_gdf, linestring_color, linestring_thickness):
     for _, linestring in linestring_gdf.iterrows():
@@ -376,8 +377,8 @@ def road_contours(map_directory,
     candidate_roads_EPSG4326_gdf['proximity'] = proximity
     candidate_roads_EPSG4326_gdf.crs = "EPSG:4326"
     
-    vector_json = {"gpkg": {'candidate_roads': candidate_roads_EPSG4326_gdf.to_json(), 'OS_Open_Roads': modern_roads_EPSG4326.to_json()}}
-     
+    vector_json = {"gpkg": {'candidate_roads': json.loads(candidate_roads_EPSG4326_gdf.to_json()), 'OS_Open_Roads': json.loads(modern_roads_EPSG4326.to_json())}}
+    
 ###################
 ## VISUALISATION ##
 ###################
