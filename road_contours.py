@@ -15,7 +15,7 @@ import math
 import geopandas as gpd
 from itertools import combinations
 from extract_modern_roads import transform_linestrings
-import json
+import fiona
 
 def draw_linestrings_on_image(bgr_image, linestring_gdf, linestring_color, linestring_thickness):
     for _, linestring in linestring_gdf.iterrows():
@@ -375,10 +375,13 @@ def road_contours(map_directory,
     candidate_roads_EPSG4326_gdf = candidate_roads_EPSG4326_gdf.explode(index_parts=True)  # Create a new row for each LineString
     candidate_roads_EPSG4326_gdf['scores'] = scores
     candidate_roads_EPSG4326_gdf['proximity'] = proximity
-    candidate_roads_EPSG4326_gdf.crs = "EPSG:4326"
+    candidate_roads_EPSG4326_gdf['proximity'] = candidate_roads_EPSG4326_gdf['proximity'].apply(str)
     
-    vector_json = {"gpkg": {'candidate_roads': json.loads(candidate_roads_EPSG4326_gdf.to_json()), 'OS_Open_Roads': json.loads(modern_roads_EPSG4326.to_json())}}
-    
+    # Create a GeoPackage
+    print('Creating GeoPackage ...')
+    vector_json = {"gpkg": {'candidate_roads': modern_roads_EPSG4326.to_json()}}
+    print('... GeoPackage created.')
+     
 ###################
 ## VISUALISATION ##
 ###################
