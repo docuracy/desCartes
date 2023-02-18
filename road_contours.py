@@ -380,11 +380,8 @@ def road_contours(map_directory,
     
     # Create a GeoPackage
     print('Creating GeoPackage ...')
-    virtual_file = io.BytesIO()
-    modern_roads_EPSG4326.to_file(virtual_file, driver="GPKG", layer="modern_roads", vfs="mem", encoding="utf-8")
-    virtual_file.seek(0)
-    contents = virtual_file.read()
-    vector_json = {"gpkg": base64.b64encode(contents).decode("utf-8")}
+    modern_roads_EPSG4326.to_file(map_directory + 'desCartes.gpkg', driver="GPKG", layer="modern_roads", vfs="mem", encoding="utf-8")
+    vector_json = {"gpkg": "https://descartes.viaeregiae.org/git/" + map_directory[1:] + 'desCartes.gpkg'}
     print('... GeoPackage created.')
      
 ###################
