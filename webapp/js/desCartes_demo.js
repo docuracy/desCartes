@@ -77,7 +77,7 @@ function showCandidateLines(response) {
 	$("<span class='comment'>To improve results, you may need to adjust the parameters before processing.</span>").appendTo(thumbnailsContainer);
 	var downloadButton = $("<button class='download'>").text("Download GeoPackage").appendTo(thumbnailsContainer);
 	downloadButton.click(function() {
-	    var binary = atob(response.file);
+	    var binary = atob(response.GeoPackage.gpkg);
 	    var byteArray = new Uint8Array(binary.length);
 	    for (var i = 0; i < binary.length; i++) {
 	        byteArray[i] = binary.charCodeAt(i);
