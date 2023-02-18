@@ -35,7 +35,7 @@ def hello():
                 EXTENT = bounds.split(",")
                 EXTENT = [float(x) for x in EXTENT]
                 
-                LOCATION_NAME = re.sub(r'https://|[{}/.]', '-', RASTER_TILE_URL+ '-' + bounds).replace(',', '_').strip('-')
+                LOCATION_NAME = re.sub(r'https://|[{}/.?]', '-', RASTER_TILE_URL+ '-' + bounds).replace(',', '_').strip('-')
                 OUTPUTDIR = './output/' + LOCATION_NAME + '/'
                 GEOTIFF_NAME = 'geo.tiff'
                     
