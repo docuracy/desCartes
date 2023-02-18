@@ -75,15 +75,21 @@ function showCandidateLines(response) {
     });
 
 	$("<span class='comment'>To improve results, you may need to adjust the parameters before processing.</span>").appendTo(thumbnailsContainer);
-    var downloadButton = $("<button class='download'>").text("Download GeoPackage").appendTo(thumbnailsContainer);
+	var downloadButton = $("<button class='download'>").text("Download GeoPackage").appendTo(thumbnailsContainer);
 	downloadButton.click(function() {
-	    var downloadLink = document.createElement("a");
-	    downloadLink.href = response.GeoPackage.gpkg;
-	    downloadLink.download = "desCartes.gpkg";
-	    document.body.appendChild(downloadLink);
-	    downloadLink.click();
-	    document.body.removeChild(downloadLink);
+	    fetch(response.GeoPackage.gpkg)
+	        .then(response => response.blob())
+	        .then(blob => {
+	            var downloadLink = document.createElement("a");
+	            downloadLink.href = URL.createObjectURL(blob);
+	            downloadLink.download = "desCartes.gpkg";
+	            document.body.appendChild(downloadLink);
+	            downloadLink.click();
+	            document.body.removeChild(downloadLink);
+	        })
+	        .catch(error => console.log(error));
 	})
+
 }
 
 $(document).ready(function() {
