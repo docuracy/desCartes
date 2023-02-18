@@ -327,6 +327,19 @@ def road_contours(map_directory,
                         break
             previouspoint = test_point
             
+    scores = []
+    for prox in proximity:
+        if len(prox) == 0:
+            scores.append(0)
+            continue
+        count = 0
+        for subarr in prox:
+            if subarr[3] is not False and subarr[4] is not False: # Road lines on both sides
+                count += 1 if subarr[1] is not False else .5 # Modern road proximity
+        scores.append(count / len(prox))
+    print(scores)
+
+    
     base64_images.append({"label": "Road boundary checks (with modern OS roads)", "image": base64.b64encode(cv2.imencode('.jpg', proximity_visualisation)[1]).decode("utf-8")})
     
     # TO DO: Split lineStrings at modern road boundaries 
@@ -358,10 +371,12 @@ def road_contours(map_directory,
             visualisation = np.where(shape == 255, shaded, visualisation) # Draw shading
             cv2.drawContours(visualisation, visualisation_contourset[2], -1, visualisation_contourset[0], visualisation_contourset[3]) # Draw outlines
         
-        for linestring in lineStrings:
+        for linestring, score in zip(lineStrings, scores):
+            overlay = visualisation.copy()
             coords = np.array(linestring.coords, np.int32)
             coords = coords.reshape(-1, 1, 2)
-            cv2.polylines(visualisation, [coords], isClosed=False, color=(0, 255, 255), thickness=2)
+            cv2.polylines(overlay, [coords], isClosed=False, color=(0, 255, 255), thickness=2)
+            visualisation = cv2.addWeighted(overlay, score, visualisation, 1 - score, 0)
     
         base64_images.append({"label": "Segmented map image", "image": base64.b64encode(cv2.imencode('.jpg', visualisation)[1]).decode("utf-8")}) 
         
