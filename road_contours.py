@@ -15,7 +15,6 @@ import math
 import geopandas as gpd
 from itertools import combinations
 from extract_modern_roads import transform_linestrings
-import fiona
 import io
 
 def draw_linestrings_on_image(bgr_image, linestring_gdf, linestring_color, linestring_thickness):
@@ -380,9 +379,10 @@ def road_contours(map_directory,
     
     # Create a GeoPackage
     print('Creating GeoPackage ...')
-    modern_roads_EPSG4326.to_file(map_directory + 'desCartes.gpkg', driver="GPKG", layer="modern_roads", vfs="mem", encoding="utf-8")
-    with open(map_directory + 'desCartes.gpkg', 'rb') as f:
-        vector_json = {"gpkg": base64.b64encode(f.read()).decode('utf-8')}
+    buffer = io.BytesIO()
+    candidate_roads_EPSG4326_gdf.to_file(buffer, driver="GPKG", layer="candidate_roads", vfs="mem", encoding="utf-8")
+    vector_json = {"gpkg": base64.b64encode(buffer.getvalue()).decode('utf-8')}
+    
     print('... GeoPackage created.')
      
 ###################
