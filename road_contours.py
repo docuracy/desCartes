@@ -23,7 +23,7 @@ def draw_linestrings_on_image(bgr_image, linestring_gdf, linestring_color, lines
         cv2.polylines(bgr_image, [np.array(pixel_coords)], False, linestring_color, thickness=linestring_thickness)
     return bgr_image
 
-def get_nearest_linestring(gdf, geoindex, test_point, max_distance):
+def get_nearest_parallel_linestring(gdf, geoindex, test_point, max_distance, tangent_angle, max_angle):
     x, y = test_point.x, test_point.y
     candidate_indices = geoindex.query(box(x - max_distance, y - max_distance, x + max_distance, y + max_distance))
     if len(candidate_indices) < 1:
@@ -31,10 +31,31 @@ def get_nearest_linestring(gdf, geoindex, test_point, max_distance):
     candidate_distances = [test_point.distance(gdf.geometry.loc[index]) for index in candidate_indices]
     candidates = list(zip(candidate_indices, candidate_distances))
     candidates.sort(key=lambda x: x[1])
-    closest_id, closest_distance = [gdf.iloc[candidates[0][0]]['id'], candidates[0][1]]
-    if closest_distance > max_distance:
-        return [False,False]
-    return [closest_distance, closest_id]
+    
+    for candidate in candidates:
+        candidate_id, candidate_distance = gdf.iloc[candidate[0]]['id'], candidate[1]
+        if candidate_distance > max_distance:
+            continue
+
+        # Get the closest point on the candidate linestring to the test point
+        candidate_linestring = gdf.geometry.loc[candidate[0]]
+        candidate_closest_point = candidate_linestring.interpolate(candidate_linestring.project(test_point))
+
+        # Get the angle of the candidate linestring's tangent at the closest point
+        for offset in [.01, -.01]:
+            try:
+                candidate_tangent_point = candidate_linestring.interpolate(candidate_linestring.project(candidate_closest_point, normalized=True) + offset) - candidate_closest_point
+                break
+            except ValueError: # Tried to find tangent using point beyond end of linestring
+                continue
+        dx = candidate_tangent_point.x - candidate_closest_point.x
+        dy = candidate_tangent_point.y - candidate_closest_point.y
+        candidate_angle = math.atan2(dy, dx)
+
+        if min((2 * np.pi) - abs(candidate_angle - tangent_angle), abs(candidate_angle - tangent_angle)) < max_angle:
+            return [candidate_distance, candidate_id]
+
+    return [False, False]    
 
 def road_contours(map_directory,
                   binary_image = "False", 
@@ -78,7 +99,7 @@ def road_contours(map_directory,
     # Open the geotiff using rasterio
     with rasterio.open(map_directory + 'geo.tiff') as raster:
         raster_image = raster.read()
-    modern_roads = transform_linestrings(map_directory, raster.transform)
+    modern_roads_EPSG4326, modern_roads = transform_linestrings(map_directory, raster.transform)
     modern_roads_sindex = modern_roads.sindex
     
     grayscale_image = cv2.cvtColor(cv2.merge(raster_image[:3]), cv2.COLOR_BGR2GRAY)
@@ -310,9 +331,10 @@ def road_contours(map_directory,
             test_distance = MAX_ROAD_WIDTH / 2 + interval_length * i
             proximity[-1].append([test_distance])
             test_point = lineString.interpolate(test_distance)
-            proximity[-1][-1].extend(get_nearest_linestring(modern_roads, modern_roads_sindex, test_point, 3 * MAX_ROAD_WIDTH))
             cv2.circle(proximity_visualisation, (int(test_point.x), int(test_point.y)), 4, (0, 0, 255), -1)
-            normal_angle = np.pi/2 + np.arctan2(test_point.y - previouspoint.y, test_point.x - previouspoint.x)
+            tangent_angle = np.arctan2(test_point.y - previouspoint.y, test_point.x - previouspoint.x)
+            proximity[-1][-1].extend(get_nearest_parallel_linestring(modern_roads, modern_roads_sindex, test_point, 3 * MAX_ROAD_WIDTH, tangent_angle, max_angle = 15 * np.pi / 180))
+            normal_angle = np.pi/2 + tangent_angle
             normal_vector = np.array([-np.cos(normal_angle), np.sin(normal_angle)])
     
             # Test the binary image at points along the normal vector
@@ -348,12 +370,13 @@ def road_contours(map_directory,
     
     # Reproject LineStrings to original raster CRS
     candidate_roads_EPSG4326 = [transform(lambda x, y: rasterio.transform.xy(raster.transform, y, x), linestring) for linestring in lineStrings]
-    gdf = gpd.GeoDataFrame(geometry=[MultiLineString(candidate_roads_EPSG4326)])
-    gdf = gdf.explode(index_parts=True)  # Create a new row for each LineString
-    gdf['name'] = 'candidate_roads'
-    gdf['proximity'] = proximity
-    gdf.crs = "EPSG:4326"
-    vector_json = {"gpkg": gdf.to_json()}
+    candidate_roads_EPSG4326_gdf = gpd.GeoDataFrame(geometry=[MultiLineString(candidate_roads_EPSG4326)])
+    candidate_roads_EPSG4326_gdf = candidate_roads_EPSG4326_gdf.explode(index_parts=True)  # Create a new row for each LineString
+    candidate_roads_EPSG4326_gdf['scores'] = scores
+    candidate_roads_EPSG4326_gdf['proximity'] = proximity
+    candidate_roads_EPSG4326_gdf.crs = "EPSG:4326"
+    
+    vector_json = {"gpkg": {'candidate_roads': candidate_roads_EPSG4326_gdf.to_json(), 'OS_Open_Roads': modern_roads_EPSG4326.to_json()}}
      
 ###################
 ## VISUALISATION ##
