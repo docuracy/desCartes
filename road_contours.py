@@ -220,7 +220,7 @@ def road_contours(map_directory,
                     
         likely_roads.append(emmentaler_eroded)
             
-    print(str(len(likely_roads)) + ' likely roads found.')
+    print(str(len(likely_roads)) + ' candidate roads found.')
     
     likely_roads = sum(likely_roads)
     
@@ -239,6 +239,7 @@ def road_contours(map_directory,
 #######################
     
     ## Divide contours (which are coincident loops) into single lines, starting a new line at each junction
+    print("Dividing contours ...")
     contours = cv2.findContours(skeleton, cv2.RETR_LIST , cv2.CHAIN_APPROX_NONE)[0]
     singular_contours = []
     visited_points = set()
@@ -292,6 +293,7 @@ def road_contours(map_directory,
         lineStrings.append(geometry.LineString(np.array(split_contour).reshape(-1, 2)).simplify(2))
     
     ## Now create new LineStrings to patch short gaps between potential road lines
+    print("Patching gaps ...")
     used_endpoints = set()
     disjointed = set()
     
@@ -316,6 +318,7 @@ def road_contours(map_directory,
             lineStrings.append(LineString([point1, point2]))
     
     ## Measure the proximity of modern roads and likely road edges at sample points along each lineString
+    print("Measuring proximities ...")
     proximity_visualisation = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
     proximity_visualisation = draw_linestrings_on_image(proximity_visualisation, modern_roads, linestring_color = (0, 255, 255), linestring_thickness = 3)
     proximity = []
@@ -323,6 +326,7 @@ def road_contours(map_directory,
         proximity.append([])
         testLength = lineString.length - MAX_ROAD_WIDTH # Do not test in proximity to junctions
         if testLength <= 0:
+            proximity[-1].append(["Too short: "+str(lineString.length)])
             continue
         test_point_count = max(2, 1 + math.ceil(testLength / MAX_ROAD_WIDTH)) #  Test at least every MAX_ROAD_WIDTH pixels
         interval_length = testLength / (test_point_count - 1)
@@ -350,29 +354,65 @@ def road_contours(map_directory,
                         break
             previouspoint = test_point
             
+    base64_images.append({"label": "Road boundary checks (with modern OS roads)", "image": base64.b64encode(cv2.imencode('.jpg', proximity_visualisation)[1]).decode("utf-8")})
+    
+    # TO DO: Split lineStrings at modern road boundaries 
+    # Join linestrings that share a modern road id but do not share an endpoint with another linestring
+    
+    print("Splitting at modern road boundaries ...")
+    split_lineStrings = []
+    split_proximity = []
+    for lineString, prox in zip(lineStrings, proximity):
+        residue_lineString = lineString
+        residue_prox = prox
+                
+        i = 1
+        while i < len(residue_prox):
+            if residue_prox[i][2] != residue_prox[i-1][2]:
+                # Split the linestring at the midpoint between consecutive test points where a change in the modern road id is detected
+                mid_point_distance = (residue_prox[i][0] + residue_prox[i-1][0]) / 2
+                split_point = residue_lineString.interpolate(mid_point_distance)
+                points_before_split_point = [point for point in residue_lineString.coords if residue_lineString.project(Point(point)) < mid_point_distance]
+                used_points = len(points_before_split_point)
+                split_lineStrings.append(LineString([*points_before_split_point, split_point]))
+                residue_lineString = LineString([split_point, *residue_lineString.coords[used_points:]])
+                split_proximity.append(residue_prox[:i])
+                print('Split',split_proximity[-1])
+                residue_prox = residue_prox[i:]
+                for residue_p in residue_prox:
+                    residue_p[0] -= mid_point_distance
+                if len(residue_prox) > 1:
+                    i = 0
+            i += 1
+                
+        split_lineStrings.append(residue_lineString)
+        split_proximity.append(residue_prox)
+        print(split_proximity[-1])
+        
+    print(len(lineStrings),len(split_lineStrings),len(proximity),len(split_proximity))
+    lineStrings = split_lineStrings
+    proximity = split_proximity
+    
+    print("Scoring ...")
     scores = []
     for prox in proximity:
         if len(prox) == 0:
             scores.append(0)
             continue
+        elif len(prox) == 1 and not isinstance(prox[0], bool): # LineString was too short to assess
+            scores.append(.3)
+            continue
         count = 0
         for subarr in prox:
             if subarr[3] is not False and subarr[4] is not False: # Road lines on both sides
-                count += 1 if subarr[1] is not False else .5 # Modern road proximity
+                count += 1 if subarr[1] is not False else .7 # Modern road proximity
         scores.append(count / len(prox))
-    print(scores)
-
-    
-    base64_images.append({"label": "Road boundary checks (with modern OS roads)", "image": base64.b64encode(cv2.imencode('.jpg', proximity_visualisation)[1]).decode("utf-8")})
-    
-    # TO DO: Split lineStrings at modern road boundaries 
-    # - find closest point to intersection of modern roads
-    # - be sure to update proximity distances (first item in array)
     
     # Reproject LineStrings to original raster CRS
+    print("Reprojecting ...")
     candidate_roads_EPSG4326 = [transform(lambda x, y: rasterio.transform.xy(raster.transform, y, x), linestring) for linestring in lineStrings]
     candidate_roads_EPSG4326_gdf = gpd.GeoDataFrame(geometry=[MultiLineString(candidate_roads_EPSG4326)])
-    candidate_roads_EPSG4326_gdf = candidate_roads_EPSG4326_gdf.explode(index_parts=True)  # Create a new row for each LineString
+    candidate_roads_EPSG4326_gdf = candidate_roads_EPSG4326_gdf.explode(index_parts=False)  # Create a new row for each LineString
     candidate_roads_EPSG4326_gdf['scores'] = scores
     candidate_roads_EPSG4326_gdf['proximity'] = proximity
     candidate_roads_EPSG4326_gdf['proximity'] = candidate_roads_EPSG4326_gdf['proximity'].apply(str)
@@ -390,6 +430,7 @@ def road_contours(map_directory,
 ###################
     
     if visualise:
+        print("Visualising ...")
         
         visualisation = cv2.cvtColor(grayscale_image, cv2.COLOR_GRAY2BGRA)
         for _, visualisation_contourset in visualisation_contoursets.items():
@@ -401,14 +442,25 @@ def road_contours(map_directory,
             visualisation = np.where(shape == 255, shaded, visualisation) # Draw shading
             cv2.drawContours(visualisation, visualisation_contourset[2], -1, visualisation_contourset[0], visualisation_contourset[3]) # Draw outlines
         
+        lineString_dict = {} # Grouping by score is necessary to speed up drawing of lineStrings
         for linestring, score in zip(lineStrings, scores):
+            if score != 0:
+                if score not in lineString_dict:
+                    lineString_dict[score] = []
+                lineString_dict[score].append(linestring)
+        
+        for score, lineStrings in lineString_dict.items():
             overlay = visualisation.copy()
-            coords = np.array(linestring.coords, np.int32)
-            coords = coords.reshape(-1, 1, 2)
-            cv2.polylines(overlay, [coords], isClosed=False, color=(0, 255, 255), thickness=2)
+            for linestring in lineStrings:
+                coords = np.array(linestring.coords, np.int32)
+                coords = coords.reshape(-1, 1, 2)
+                cv2.polylines(overlay, [coords], isClosed=False, color=(0, 255, 255), thickness=2)
             visualisation = cv2.addWeighted(overlay, score, visualisation, 1 - score, 0)
+
     
         base64_images.append({"label": "Segmented map image", "image": base64.b64encode(cv2.imencode('.jpg', visualisation)[1]).decode("utf-8")}) 
+        
+        print('... completed.')
         
         if show_images:
             cv2.imshow("Binary Image", binary_image)
