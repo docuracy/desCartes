@@ -46,14 +46,14 @@ from road_contours import road_contours
 # A simple way to get the extent coordinates is to open a Google map in a browser,
 # then right-click on the south-west corner of the area of interest. Then click on 
 # the displayed coordinates and then paste them below. Repeat for the north-east corner.
-EXTENT_SOUTHWEST_LAT, EXTENT_SOUTHWEST_LNG = 51.76671059545997, 0.7862768254319205,
-EXTENT_NORTHEAST_LAT, EXTENT_NORTHEAST_LNG = 51.77743715016658, 0.8063655953527965
+EXTENT_SOUTHWEST_LAT, EXTENT_SOUTHWEST_LNG = 51.503272177293546, -2.347745627052636,
+EXTENT_NORTHEAST_LAT, EXTENT_NORTHEAST_LNG = 51.51207333180604, -2.3292914006855354
 
 ## The location name will be used to name the directory where files are stored.
 ## If a geotiff already exist in this directory, it will be re-used, and the coordinates given above ignored.
-LOCATION_NAME = 'longborough'
+# LOCATION_NAME = 'longborough'
 # LOCATION_NAME = 'longborough-south'
-# LOCATION_NAME = 'tormarton'
+LOCATION_NAME = 'tormarton'
 # LOCATION_NAME = 'tolleshunt'
 
 ## Uncomment one of these methods, or create your own in the IMAGE PROCESSING CALLS section.

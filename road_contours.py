@@ -10,12 +10,12 @@ from skimage.morphology import skeletonize
 import base64
 import shapely.geometry as geometry
 from shapely.geometry import MultiLineString, LineString, Point, box
-from shapely.ops import split, transform
+from shapely.ops import transform
 import math
 import geopandas as gpd
-from itertools import combinations
 from extract_modern_roads import transform_linestrings
 import io
+import itertools
 
 def draw_linestrings_on_image(bgr_image, linestring_gdf, linestring_color, linestring_thickness):
     for _, linestring in linestring_gdf.iterrows():
@@ -152,13 +152,13 @@ def road_contours(map_directory,
         else:
             contour_validity.append(False)
             contour_areas.append(0)   
-    print("... Done.")
     
     base64_images.append({"label": "Thinned map image", "image": base64.b64encode(cv2.imencode('.jpg', binary_image)[1]).decode("utf-8")})
     
+    print("Testing and filtering shapes ...")
     likely_roads = []
     for i, contour in enumerate(contours):
-        # print("{}/{}".format(i+1, len(contours)))
+        print("{}/{}".format(i+1, len(contours)))
         
         if not contour_validity[i]:
             continue # Reject contour
@@ -220,7 +220,7 @@ def road_contours(map_directory,
                     
         likely_roads.append(emmentaler_eroded)
             
-    print(str(len(likely_roads)) + ' candidate roads found.')
+    print(str(len(likely_roads)) + ' candidate road areas found.')
     
     likely_roads = sum(likely_roads)
     
@@ -283,7 +283,7 @@ def road_contours(map_directory,
             if tuple(contour[i][0]) in endpoints:
                 divide = True
                 split_contours.append(contour[:i+1])
-                contour_list.insert(0, contour[i+1:])
+                contour_list.insert(0, contour[i:])
                 break
         if not divide and len(contour) > 1:
             split_contours.append(contour)
@@ -291,31 +291,6 @@ def road_contours(map_directory,
     lineStrings = []
     for split_contour in split_contours:
         lineStrings.append(geometry.LineString(np.array(split_contour).reshape(-1, 2)).simplify(2))
-    
-    ## Now create new LineStrings to patch short gaps between potential road lines
-    print("Patching gaps ...")
-    used_endpoints = set()
-    disjointed = set()
-    
-    for i, line in enumerate(lineStrings):
-        for point in [line.coords[0], line.coords[-1]]:
-            if point in used_endpoints:
-                continue
-            used_endpoints.add(Point(point))
-            shared = False
-            for k, other in enumerate(lineStrings):
-                if i == k:
-                    continue
-                if point in [other.coords[0], other.coords[-1]]:
-                    shared = True
-                    break
-            if not shared:
-                disjointed.add(Point(point))
-                break  
-
-    for point1, point2 in combinations(used_endpoints, 2):
-        if (point1 in disjointed or point2 in disjointed) and point1.distance(point2) <= gap_close:
-            lineStrings.append(LineString([point1, point2]))
     
     ## Measure the proximity of modern roads and likely road edges at sample points along each lineString
     print("Measuring proximities ...")
@@ -356,12 +331,11 @@ def road_contours(map_directory,
             
     base64_images.append({"label": "Road boundary checks (with modern OS roads)", "image": base64.b64encode(cv2.imencode('.jpg', proximity_visualisation)[1]).decode("utf-8")})
     
-    # TO DO: Split lineStrings at modern road boundaries 
-    # Join linestrings that share a modern road id but do not share an endpoint with another linestring
-    
+    # Split at modern road boundaries and label any matched candidate roads
     print("Splitting at modern road boundaries ...")
     split_lineStrings = []
     split_proximity = []
+    modern_road_labels = []
     for lineString, prox in zip(lineStrings, proximity):
         residue_lineString = lineString
         residue_prox = prox
@@ -377,7 +351,7 @@ def road_contours(map_directory,
                 split_lineStrings.append(LineString([*points_before_split_point, split_point]))
                 residue_lineString = LineString([split_point, *residue_lineString.coords[used_points:]])
                 split_proximity.append(residue_prox[:i])
-                print('Split',split_proximity[-1])
+                modern_road_labels.append('' if residue_prox[i][2] == False else residue_prox[i][2])
                 residue_prox = residue_prox[i:]
                 for residue_p in residue_prox:
                     residue_p[0] -= mid_point_distance
@@ -387,9 +361,8 @@ def road_contours(map_directory,
                 
         split_lineStrings.append(residue_lineString)
         split_proximity.append(residue_prox)
-        print(split_proximity[-1])
+        modern_road_labels.append('' if (not isinstance(residue_prox[0][0], bool) or residue_prox[0][2] == False) else residue_prox[0][2])
         
-    print(len(lineStrings),len(split_lineStrings),len(proximity),len(split_proximity))
     lineStrings = split_lineStrings
     proximity = split_proximity
     
@@ -407,23 +380,73 @@ def road_contours(map_directory,
             if subarr[3] is not False and subarr[4] is not False: # Road lines on both sides
                 count += 1 if subarr[1] is not False else .7 # Modern road proximity
         scores.append(count / len(prox))
+        
+    # Combine arrays in a GeoDataFrame
+    candidate_roads = gpd.GeoDataFrame({'geometry': lineStrings, 'score': scores, 'proximity': proximity})
     
+    ## Fill gaps in candidate road network
+    print("Filling gaps ...")
+    used_endpoints = set()
+    disjointed = set()
+    filler_segments = []
+    
+    # Find disjointed points and add them to disjointed set
+    for line in lineStrings:
+        start_point, end_point = Point(line.coords[0]), Point(line.coords[-1])
+        if start_point not in used_endpoints:
+            used_endpoints.add(start_point)
+            shared = any(start_point in [other.coords[0], other.coords[-1]] for other in lineStrings if line != other)
+            if not shared:
+                disjointed.add(start_point)
+        if end_point not in used_endpoints:
+            used_endpoints.add(end_point)
+            shared = any(end_point in [other.coords[0], other.coords[-1]] for other in lineStrings if line != other)
+            if not shared:
+                disjointed.add(end_point)
+    
+    # Create filler segments
+    for p1, p2 in itertools.combinations(used_endpoints, 2):
+        if p1.distance(p2) <= gap_close and (p1 in disjointed or p2 in disjointed):
+            filler_segments.append(LineString([p1, p2]))
+    
+    print("... " + str(len(filler_segments)) + " fillers created, now filtering ...")
+
+    # Check for intersections between filler segments
+    segments_to_remove = set()
+    for (i, segment1), (j, segment2) in itertools.combinations(enumerate(filler_segments), 2):
+        if segment1.intersects(segment2):
+            if segment1.length > segment2.length:
+                segments_to_remove.add(i)
+            else:
+                segments_to_remove.add(j)
+    
+    # Remove the longer filler segments that intersect
+    for i in reversed(sorted(segments_to_remove)):
+        if filler_segments[i].length > 2:
+            filler_segments.pop(i)
+
+    # Create the new GeoDataFrame with the filler segments added
+    candidate_roads = gpd.GeoDataFrame({
+        'geometry': candidate_roads.geometry.tolist() + filler_segments,
+        'score': candidate_roads.score.tolist() + [-1]*len(filler_segments),
+        'proximity': candidate_roads.proximity.tolist() + [False]*len(filler_segments)
+    })
+
+
     # Reproject LineStrings to original raster CRS
     print("Reprojecting ...")
-    candidate_roads_EPSG4326 = [transform(lambda x, y: rasterio.transform.xy(raster.transform, y, x), linestring) for linestring in lineStrings]
+    candidate_roads_EPSG4326 = [transform(lambda x, y: rasterio.transform.xy(raster.transform, y, x), row.geometry) for _, row in candidate_roads.iterrows()]
     candidate_roads_EPSG4326_gdf = gpd.GeoDataFrame(geometry=[MultiLineString(candidate_roads_EPSG4326)])
-    candidate_roads_EPSG4326_gdf = candidate_roads_EPSG4326_gdf.explode(index_parts=False)  # Create a new row for each LineString
-    candidate_roads_EPSG4326_gdf['scores'] = scores
-    candidate_roads_EPSG4326_gdf['proximity'] = proximity
-    candidate_roads_EPSG4326_gdf['proximity'] = candidate_roads_EPSG4326_gdf['proximity'].apply(str)
+    candidate_roads_EPSG4326_gdf = candidate_roads_EPSG4326_gdf.explode(index_parts=False)
+    candidate_roads_EPSG4326_gdf['modern_road_id'] = candidate_roads.index
+    candidate_roads_EPSG4326_gdf['scores'] = candidate_roads['score']
+    candidate_roads_EPSG4326_gdf['proximity'] = candidate_roads['proximity'].astype(str)
     
     # Create a GeoPackage
     print('Creating GeoPackage ...')
     buffer = io.BytesIO()
     candidate_roads_EPSG4326_gdf.to_file(buffer, driver="GPKG", layer="candidate_roads", vfs="mem", encoding="utf-8")
     vector_json = {"gpkg": base64.b64encode(buffer.getvalue()).decode('utf-8')}
-    
-    print('... GeoPackage created.')
      
 ###################
 ## VISUALISATION ##
@@ -442,31 +465,35 @@ def road_contours(map_directory,
             visualisation = np.where(shape == 255, shaded, visualisation) # Draw shading
             cv2.drawContours(visualisation, visualisation_contourset[2], -1, visualisation_contourset[0], visualisation_contourset[3]) # Draw outlines
         
-        lineString_dict = {} # Grouping by score is necessary to speed up drawing of lineStrings
-        for linestring, score in zip(lineStrings, scores):
+        candidate_road_dict = {}
+        for i, row in candidate_roads.iterrows():
+            score = row['score']
+            candidate_road = row['geometry']
             if score != 0:
-                if score not in lineString_dict:
-                    lineString_dict[score] = []
-                lineString_dict[score].append(linestring)
+                if score not in candidate_road_dict:
+                    candidate_road_dict[score] = []
+                candidate_road_dict[score].append(candidate_road)
         
-        for score, lineStrings in lineString_dict.items():
+        for score, candidate_roads in candidate_road_dict.items():
             overlay = visualisation.copy()
-            for linestring in lineStrings:
-                coords = np.array(linestring.coords, np.int32)
+            colour = (255, 0, 0) if score == -1 else (0, 255, 255) # Blue for filler roads
+            score = .5 if score == -1 else score # Filler roads
+            opacity = np.sin(score * np.pi / 2) # shape the score profile
+            for candidate_road in candidate_roads:
+                coords = np.array(candidate_road.coords, np.int32)
                 coords = coords.reshape(-1, 1, 2)
-                cv2.polylines(overlay, [coords], isClosed=False, color=(0, 255, 255), thickness=2)
-            visualisation = cv2.addWeighted(overlay, score, visualisation, 1 - score, 0)
-
+                cv2.polylines(overlay, [coords], isClosed=False, color=colour, thickness=2)
+            visualisation = cv2.addWeighted(overlay, opacity, visualisation, 1 - opacity, 0)
     
         base64_images.append({"label": "Segmented map image", "image": base64.b64encode(cv2.imencode('.jpg', visualisation)[1]).decode("utf-8")}) 
         
-        print('... completed.')
-        
         if show_images:
+            print('Showing images ...')
             cv2.imshow("Binary Image", binary_image)
             cv2.imshow('skeleton', skeleton) 
             cv2.imshow('proximity_visualisation', proximity_visualisation) 
             cv2.imshow('candidate_roads', visualisation) 
             cv2.waitKey(0)
     
+    print('... completed.')
     return contours, skeleton, base64_images, vector_json

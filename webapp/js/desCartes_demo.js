@@ -42,8 +42,8 @@ function calculateRectangleArea(bounds) {
 
 function showCandidateLines(response) {
     spinner(false);
-	var width = Math.round($(window).width() * .9);
-	var height = Math.round($(window).height() * .9);
+    var width = Math.round($(window).width() * .9);
+    var height = Math.round($(window).height() * .9);
     var modalDialog = $("<div title='Click image to enlarge it, or Download GeoPackage of extracted road vectors.'>").addClass("modal-dialog").appendTo("body");
     modalDialog.dialog({
         width: width,
@@ -57,39 +57,41 @@ function showCandidateLines(response) {
 
     var thumbnailsContainer = $("<div>").addClass("thumbnails-container").appendTo(modalDialog);
 
-	response.base64_images.forEach(function(image, i) {
-		var figure = $("<div>").addClass("figure").appendTo(thumbnailsContainer);
+    response.base64_images.forEach(function(image, i) {
+        var figure = $("<div>").addClass("figure").appendTo(thumbnailsContainer);
         var thumbnail = $("<img>").addClass("thumbnail").attr("src", "data:image/jpeg;base64," + image.image).appendTo(figure);
-        var label = $("<div>").addClass("thumbnail-label").text((i+1)+'. '+image.label).appendTo(figure);
+        var label = $("<div>").addClass("thumbnail-label").text((i + 1) + '. ' + image.label).appendTo(figure);
 
         thumbnail.click(function() {
             var overlay = $("<div>").addClass("overlay").appendTo("body");
-        	var fullscreenImage = $("<img>").addClass("fullscreen-image").attr("src", "data:image/jpeg;base64," + image.image).appendTo("body");
+            var fullscreenImage = $("<img>").addClass("fullscreen-image").attr("src", "data:image/jpeg;base64," + image.image).appendTo("body");
             var closeButton = $("<div>").addClass("close-button").text("X").appendTo("body");
-    		closeButton.click(function() {
+            closeButton.click(function() {
                 fullscreenImage.remove();
                 closeButton.remove();
-				overlay.remove();
+                overlay.remove();
             });
         });
     });
 
-	$("<span class='comment'>To improve results, you may need to adjust the parameters before processing.</span>").appendTo(thumbnailsContainer);
-	var downloadButton = $("<button class='download'>").text("Download GeoPackage").appendTo(thumbnailsContainer);
-	downloadButton.click(function() {
-		var binary = atob(response.GeoPackage.gpkg);
-		var byteArray = new Uint8Array(binary.length);
-	    for (var i = 0; i < binary.length; i++) {
-	        byteArray[i] = binary.charCodeAt(i);
-	    }
-		var blob = new Blob([byteArray], { type: "application/x-sqlite3" });
-	    var downloadLink = document.createElement("a");
-	    downloadLink.href = URL.createObjectURL(blob);
-	    downloadLink.download = "desCartes.gpkg";
-	    document.body.appendChild(downloadLink);
-	    downloadLink.click();
-	    document.body.removeChild(downloadLink);
-	})
+    $("<span class='comment'>To improve results, you may need to adjust the parameters before processing.</span>").appendTo(thumbnailsContainer);
+    var downloadButton = $("<button class='download'>").text("Download GeoPackage").appendTo(thumbnailsContainer);
+    downloadButton.click(function() {
+        var binary = atob(response.GeoPackage.gpkg);
+        var byteArray = new Uint8Array(binary.length);
+        for (var i = 0; i < binary.length; i++) {
+            byteArray[i] = binary.charCodeAt(i);
+        }
+        var blob = new Blob([byteArray], {
+            type: "application/x-sqlite3"
+        });
+        var downloadLink = document.createElement("a");
+        downloadLink.href = URL.createObjectURL(blob);
+        downloadLink.download = "desCartes.gpkg";
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+    })
 
 }
 
@@ -129,45 +131,57 @@ $(document).ready(function() {
     $("#send").click(function() {
         spinner("");
         var bounds = rect.getBounds();
-		var formData = $("#road-parameters").serialize();
+        var formData = $("#road-parameters").serialize();
         $.ajax({
             type: "GET",
+            timeout: 60000, // set a 1-minute timeout in milliseconds
+            dataType: 'json',
             url: "https://descartes.viaeregiae.org/?bounds=" + encodeURIComponent(bounds.getSouthWest().lng) + "," + encodeURIComponent(bounds.getSouthWest().lat) + "," + encodeURIComponent(bounds.getNorthEast().lng) + "," + encodeURIComponent(bounds.getNorthEast().lat) + "&" + formData,
             success: function(response) {
-                showCandidateLines(response)
+                if (response && response.base64_images && response.base64_images.length > 0) {
+                    showCandidateLines(response)
+                } else {
+                    spinner("Sorry, something went wrong. The server returned an unexpected response.");
+                }
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                if (textStatus === 'timeout') {
+                    spinner("Sorry, something went wrong. The server failed to respond within the allowed time.");
+                } else {
+                    var response = jqXHR.responseJSON;
+                    spinner("Sorry, something went wrong." + "Error " + response.error.code + ": " + response.error.message);
+                }
             }
-
-
         });
     });
 
-	$("#toggleForm").click(function() {
-	    $("#road-parameters").toggle();
-	    $(this).text($(this).text() == "Adjust Parameters" ? "Hide Parameters" : "Adjust Parameters");
-	}).click();
-	
-	for (i = 1; i <= 11; i += 2) {
+    $("#toggleForm").click(function() {
+        $("#road-parameters").toggle();
+        $(this).text($(this).text() == "Adjust Parameters" ? "Hide Parameters" : "Adjust Parameters");
+    }).click();
+
+    for (i = 1; i <= 11; i += 2) {
         $('#blur_size').append($("<option>", {
             value: i,
             text: i,
             selected: (i == 3)
         }));
     }
-	for (i = 0; i <= 254; i++) {
+    for (i = 0; i <= 254; i++) {
         $('#binarization_threshold').append($("<option>", {
             value: i,
             text: i,
             selected: (i == 210)
         }));
     }
-	for (i = 0; i <= 30; i++) {
+    for (i = 0; i <= 30; i++) {
         $('#gap_close').append($("<option>", {
             value: i,
             text: i,
             selected: (i == 3)
         }));
     }
-	$("#road-parameters label").each(function() {
-      $(this).append("<sup class='tooltip-mark'>?</sup>");
+    $("#road-parameters label").each(function() {
+        $(this).append("<sup class='tooltip-mark'>?</sup>");
     });
 });
