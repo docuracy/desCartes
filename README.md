@@ -4,7 +4,7 @@
 
 ><img src="https://user-images.githubusercontent.com/42514781/219341848-9d578564-f8a1-48d7-b13b-5a64c610ae3a.jpeg" />
 >
->Output from *des*Cartes. Areas are shaded by colour to indicate the criteria by which they were rejected as candidate roads. Likely roads are indicated by yellow lines, less-likely roads by blue lines. *Further development will focus on improved discrimination between likely and less-likely roads, and on patching small gaps to establish a road network.*
+>Output from *des*Cartes. Areas are shaded by colour to indicate the criteria by which they were rejected as candidate roads. Candidate road vectors are scored based on their adherence to map contours and their similarity to modern roads, and their score is reflected in the opacity of the yellow lines. Blue lines are un-scored gap-fillers.
 
 For any given map [extent](https://en.wikipedia.org/wiki/Map_extent) (bounding coordinates), *des*Cartes first generates a georeferenced map image ([geotiff](https://en.wikipedia.org/wiki/GeoTIFF)), and then - using a range of adjustable input parameters - processes the image to extract candidate road lines.
 
@@ -21,6 +21,8 @@ For any given map [extent](https://en.wikipedia.org/wiki/Map_extent) (bounding c
 
 ## Live Demo
 
-[Click here](https://bit.ly/desCartes-demo) for a limited live demonstration of *des*Cartes in your browser, where you can select a small area on a map and see the results of image processing. Map tileset selection is not yet part of this demonstration. 
+[Click here](https://bit.ly/desCartes-demo) for a limited live demonstration of *des*Cartes in your browser, where you can select a small area on a map and see the results of image processing, and download a GeoPackage of scored candidate roads for use in GIS software. Map tileset selection is not yet part of this demonstration. 
 
-Please follow [@docuracy](https://twitter.com/docuracy) on Twitter or [@stephengadd@mstdn.social](https://mstdn.social/@stephengadd) on Mastodon for updates.
+Development and server costs are entirely self-funded. Please [donate](https://ko-fi.com/docuracy) if you can. Commissions for customised development are welcome!
+
+Follow [@docuracy](https://twitter.com/docuracy) on Twitter or [@stephengadd@mstdn.social](https://mstdn.social/@stephengadd) on Mastodon for updates.
