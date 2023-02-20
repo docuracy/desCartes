@@ -178,7 +178,7 @@ $(document).ready(function() {
         $('#gap_close').append($("<option>", {
             value: i,
             text: i,
-            selected: (i == 3)
+            selected: (i == 20)
         }));
     }
     $("#road-parameters label").each(function() {

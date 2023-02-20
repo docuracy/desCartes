@@ -1,7 +1,7 @@
 '''
 @author: Stephen Gadd, Docuracy Ltd, UK
 
-obsolete_code recognises roads on old maps, and converts them to vector lines that can be 
+desCartes recognises roads on old maps, and converts them to vector lines that can be 
 used in GIS applications and historical transport network analysis.
 
 For any given map extent (bounding coordinates), obsolete_code first generates a a 
@@ -75,23 +75,23 @@ def get_nearest_parallel_linestring(gdf, geoindex, test_point, max_distance, tan
     return [False, False]    
 
 def desCartes(map_directory,
-                  binary_image = "False", 
-                  blur_size = "3", # Used to try to remove blemishes from image - greatly reduces number of spurious contours and consequent processing-time
-                  binarization_threshold = "210",
-                  MAX_ROAD_WIDTH = "20", 
-                  MIN_ROAD_WIDTH = "6", 
-                  convexity_min = ".9", 
-                  min_size_factor = "10", # Multiplied by int(MAX_ROAD_WIDTH)^2 to give minimum size for a contour to be considered
-                  inflation_factor = "2.3", # Multiplied by int(MAX_ROAD_WIDTH) to limit average breadth of a contour perpendicular to its skeleton
-                  gap_close = "20", # For closing gaps between likely roads
-                  templating = "True",
-                  template_dir = './data/templates', 
-                  template_filenames = ['tree-broadleaf.png', 'tree-conifer.png'], 
-                  thresholds = [.7, .7],
-                  maximum_tree_density = ".1",
-                  visualise = "True",
-                  show_images = "False"
-                  ):
+              binary_image = "False", 
+              blur_size = "3", # Used to try to remove blemishes from image - greatly reduces number of spurious contours and consequent processing-time
+              binarization_threshold = "210",
+              MAX_ROAD_WIDTH = "20", 
+              MIN_ROAD_WIDTH = "6", 
+              convexity_min = ".9", 
+              min_size_factor = "10", # Multiplied by int(MAX_ROAD_WIDTH)^2 to give minimum size for a contour to be considered
+              inflation_factor = "2.3", # Multiplied by int(MAX_ROAD_WIDTH) to limit average breadth of a contour perpendicular to its skeleton
+              gap_close = "20", # For closing gaps between likely roads
+              templating = "True",
+              template_dir = './data/templates', 
+              template_filenames = ['tree-broadleaf.png', 'tree-conifer.png'], 
+              thresholds = [.7, .7],
+              maximum_tree_density = ".1",
+              visualise = "True",
+              show_images = "False"
+              ):
     
     # Necessary to handle parameters passed as strings in URL
     def cast_params(binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, 
