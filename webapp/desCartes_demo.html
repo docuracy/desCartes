@@ -16,6 +16,7 @@
 		<div id="instructions">
 			<span>Drag and resize the selection box to an area of interest (up to *** km²), and then click here: </span>
 			<button id="send">Start Processing</button>
+			<button id="donate" title="Development and server costs are entirely self-funded. Please donate if you can!">£ Donate</button>
 			<a id="toggleForm" href="#">Hide Parameters</a>
 			<form id="road-parameters">
 			  <label for="blur_size" title="Used to try to remove blemishes from image - greatly reduces number of spurious contours and consequent processing-time.">Blur Size:</label>
@@ -41,9 +42,9 @@
 			</form>																			
 			<div class="spinner-overlay">
 				<div class="spinner">
-					<div class="bounce1"></div>
-					<div class="bounce2"></div>
-					<div class="bounce3"></div>
+					<div class="spinner-bounce bounce1"></div>
+					<div class="spinner-bounce bounce2"></div>
+					<div class="spinner-bounce bounce3"></div>
 					<p id="spinner-text">This demonstration gives only an incomplete overview of the functionality of <i>des</i>Cartes, which is still under development. <button>OK</button></p>
 				</div>
 			</div>

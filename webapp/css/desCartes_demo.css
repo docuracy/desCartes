@@ -53,6 +53,12 @@ body {
     overflow: auto;
 }
 
+#donate {
+	float: left;
+    margin-top: 8px;
+    color: red;
+}
+
 #road-parameters {
 	text-align: end;
     padding-top: 32px;
@@ -188,7 +194,7 @@ input[type="checkbox"] {
   height: 100%;
 }
 
-.spinner > div {
+.spinner > div.spinner-bounce {
   width: 40px;
   height: 40px;
   background-color: var(--modal-font-color);

@@ -155,6 +155,10 @@ $(document).ready(function() {
         });
     });
 
+	$('#donate').click(function() {
+	  window.open('https://ko-fi.com/docuracy', '_blank');
+	});
+
     $("#toggleForm").click(function() {
         $("#road-parameters").toggle();
         $(this).text($(this).text() == "Adjust Parameters" ? "Hide Parameters" : "Adjust Parameters");
