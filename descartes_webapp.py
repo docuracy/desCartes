@@ -35,9 +35,9 @@ def get_desCartes():
                 OUTPUTDIR = './output/' + LOCATION_NAME + '/'
                 GEOTIFF_NAME = 'geo.tiff'
                     
-                if not os.path.exists(OUTPUTDIR + GEOTIFF_NAME):
-                    create_geotiff (RASTER_TILE_URL, OUTPUTDIR, GEOTIFF_NAME, EXTENT, RASTER_TILE_ZOOM)
-                    extract_modern_roads(DATADIR, OUTPUTDIR, MODERN_ROADFILE, LOCATION_NAME, EXTENT)
+                # if not os.path.exists(OUTPUTDIR + GEOTIFF_NAME):
+                #     create_geotiff (RASTER_TILE_URL, OUTPUTDIR, GEOTIFF_NAME, EXTENT, RASTER_TILE_ZOOM)
+                #     extract_modern_roads(DATADIR, OUTPUTDIR, MODERN_ROADFILE, LOCATION_NAME, EXTENT)
                 
                 _, _, base64_images, vector_json, message = desCartes(OUTPUTDIR, **args)
                 
