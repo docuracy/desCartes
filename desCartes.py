@@ -97,7 +97,7 @@ def desCartes(map_directory,
     # Necessary to handle parameters passed as strings in URL
     def cast_params(binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, 
         convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, 
-        visualise, show_images):
+        shape_filter, templating, visualise, show_images):
         binary_image = False if binary_image == "False" else True
         blur_size = int(blur_size) if isinstance(blur_size, str) else blur_size
         binarization_threshold = int(binarization_threshold) if isinstance(binarization_threshold, str) else binarization_threshold
