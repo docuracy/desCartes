@@ -104,7 +104,7 @@ def desCartes(map_directory,
         MAX_ROAD_WIDTH = int(MAX_ROAD_WIDTH) if isinstance(MAX_ROAD_WIDTH, str) else MAX_ROAD_WIDTH
         MIN_ROAD_WIDTH = int(MIN_ROAD_WIDTH) if isinstance(MIN_ROAD_WIDTH, str) else MIN_ROAD_WIDTH
         convexity_min = float(convexity_min) if isinstance(convexity_min, str) else convexity_min
-        min_size_factor = int(min_size_factor) if isinstance(min_size_factor, str) else min_size_factor
+        min_size_factor = float(min_size_factor) if isinstance(min_size_factor, str) else min_size_factor
         inflation_factor = float(inflation_factor) if isinstance(inflation_factor, str) else inflation_factor
         gap_close = int(gap_close) if isinstance(gap_close, str) else gap_close
         maximum_tree_density = float(maximum_tree_density) if isinstance(maximum_tree_density, str) else maximum_tree_density
@@ -276,7 +276,7 @@ def desCartes(map_directory,
         skeleton_mask = np.zeros_like(grayscale_image, dtype=np.uint8)
         skeleton_mask[skeleton == 255] = 255
         likely_roads_visualisation[skeleton_mask > 0] = (0, 255, 255, 255)
-        base64_images.append({"label": "Skeletonized likely roads", "image": base64.b64encode(cv2.imencode('.jpg', likely_roads_visualisation)[1]).decode("utf-8")})
+        base64_images.append({"label": "Skeletonized candidate roads", "image": base64.b64encode(cv2.imencode('.jpg', likely_roads_visualisation)[1]).decode("utf-8")})
 
 #######################
 ## VECTOR PROCESSING ##
