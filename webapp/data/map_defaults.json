@@ -10,7 +10,7 @@
       "binarization_threshold": 210,
       "MAX_ROAD_WIDTH": 20,
       "MIN_ROAD_WIDTH": 6,
-      "min_size_factor": 10,
+      "min_size_factor": 7,
       "gap_close": 20,
 	  "shape_filter": "True",
       "convexity_min": 0.9,

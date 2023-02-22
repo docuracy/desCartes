@@ -79,6 +79,11 @@ body {
 	padding: 0px;
 }
 
+#road-parameters input[type=text]{
+	width: 39px;
+	text-align: left;
+}
+
 #toggleForm {
 	float: right;
     margin-top: 8px;
