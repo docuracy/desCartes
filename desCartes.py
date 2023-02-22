@@ -189,19 +189,22 @@ def desCartes(map_directory,
         if hull_area == 0:
             continue # Reject contour
         
-        if shape_filter:
+        if shape_filter == True:
         
             convexity = contour_areas[i] / hull_area
             if convexity > convexity_min:
                 visualisation_contoursets["convexity"][2].append(contour) # Green for convexity rejection
                 continue # Reject contour      
             
-            # Create shape with holes and outsized areas removed
-            emmentaler = np.zeros_like(binary_image)
-            cv2.drawContours(emmentaler, [contour], -1, 255, -1)        
-            child_contours = [c for index, (c, h) in enumerate(zip(contours, hierarchy[0])) if h[3] == i and contour_validity[index]] # Get valid child contours; any blobs within a likely road are thus eliminated
-            for child in child_contours:
-                cv2.drawContours(emmentaler, [child], -1, 0, -1)
+        # Create shape with holes and outsized areas removed
+        emmentaler = np.zeros_like(binary_image)
+        cv2.drawContours(emmentaler, [contour], -1, 255, -1)        
+        child_contours = [c for index, (c, h) in enumerate(zip(contours, hierarchy[0])) if h[3] == i and contour_validity[index]] # Get valid child contours; any blobs within a likely road are thus eliminated
+        for child in child_contours:
+            cv2.drawContours(emmentaler, [child], -1, 0, -1)
+            
+        if shape_filter == True:    
+            
             emmentaler_area = np.sum(emmentaler == 255)
             ## Remove outsized areas   
             inflation_factor = inflation_factor
@@ -239,10 +242,13 @@ def desCartes(map_directory,
                 if match_count * template_area / emmentaler_area > maximum_tree_density:
                     visualisation_contoursets["woodland"][2].append(contour) # Yellow for tree density rejection
                     continue # Reject contour    
+                    
+                likely_roads.append(emmentaler_eroded)
+        
+        else:
+            likely_roads.append(emmentaler)      
         
         visualisation_contoursets["likely_road_shape"][2].append(contour)# Red for likely road  
-                    
-        likely_roads.append(emmentaler_eroded)
             
     print(str(len(likely_roads)) + ' candidate road areas found.')
     
@@ -423,54 +429,55 @@ def desCartes(map_directory,
     # Combine arrays in a GeoDataFrame
     candidate_roads = gpd.GeoDataFrame({'geometry': lineStrings, 'score': scores, 'proximity': proximity})
     
-    ## Fill gaps in candidate road network
-    print("Filling gaps ...")
-    used_endpoints = set()
-    disjointed = set()
-    filler_segments = []
+    if shape_filter == True: # Process too time-consuming if shapes have not been filtered
     
-    # Find disjointed points and add them to disjointed set
-    for line in lineStrings:
-        start_point, end_point = Point(line.coords[0]), Point(line.coords[-1])
-        if start_point not in used_endpoints:
-            used_endpoints.add(start_point)
-            shared = any(start_point in [other.coords[0], other.coords[-1]] for other in lineStrings if line != other)
-            if not shared:
-                disjointed.add(start_point)
-        if end_point not in used_endpoints:
-            used_endpoints.add(end_point)
-            shared = any(end_point in [other.coords[0], other.coords[-1]] for other in lineStrings if line != other)
-            if not shared:
-                disjointed.add(end_point)
+        ## Fill gaps in candidate road network
+        print("Filling gaps ...")
+        used_endpoints = set()
+        disjointed = set()
+        filler_segments = []
+        
+        # Find disjointed points and add them to disjointed set
+        for line in lineStrings:
+            start_point, end_point = Point(line.coords[0]), Point(line.coords[-1])
+            if start_point not in used_endpoints:
+                used_endpoints.add(start_point)
+                shared = any(start_point in [other.coords[0], other.coords[-1]] for other in lineStrings if line != other)
+                if not shared:
+                    disjointed.add(start_point)
+            if end_point not in used_endpoints:
+                used_endpoints.add(end_point)
+                shared = any(end_point in [other.coords[0], other.coords[-1]] for other in lineStrings if line != other)
+                if not shared:
+                    disjointed.add(end_point)
+        
+        # Create filler segments
+        for p1, p2 in itertools.combinations(used_endpoints, 2):
+            if p1.distance(p2) <= gap_close and (p1 in disjointed or p2 in disjointed):
+                filler_segments.append(LineString([p1, p2]))
+        
+        print("... " + str(len(filler_segments)) + " fillers created, now filtering ...")
     
-    # Create filler segments
-    for p1, p2 in itertools.combinations(used_endpoints, 2):
-        if p1.distance(p2) <= gap_close and (p1 in disjointed or p2 in disjointed):
-            filler_segments.append(LineString([p1, p2]))
+        # Check for intersections between filler segments
+        segments_to_remove = set()
+        for (i, segment1), (j, segment2) in itertools.combinations(enumerate(filler_segments), 2):
+            if segment1.intersects(segment2):
+                if segment1.length > segment2.length:
+                    segments_to_remove.add(i)
+                else:
+                    segments_to_remove.add(j)
+        
+        # Remove the longer filler segments that intersect
+        for i in reversed(sorted(segments_to_remove)):
+            if filler_segments[i].length > 2:
+                filler_segments.pop(i)
     
-    print("... " + str(len(filler_segments)) + " fillers created, now filtering ...")
-
-    # Check for intersections between filler segments
-    segments_to_remove = set()
-    for (i, segment1), (j, segment2) in itertools.combinations(enumerate(filler_segments), 2):
-        if segment1.intersects(segment2):
-            if segment1.length > segment2.length:
-                segments_to_remove.add(i)
-            else:
-                segments_to_remove.add(j)
-    
-    # Remove the longer filler segments that intersect
-    for i in reversed(sorted(segments_to_remove)):
-        if filler_segments[i].length > 2:
-            filler_segments.pop(i)
-
-    # Create the new GeoDataFrame with the filler segments added
-    candidate_roads = gpd.GeoDataFrame({
-        'geometry': candidate_roads.geometry.tolist() + filler_segments,
-        'score': candidate_roads.score.tolist() + [-1]*len(filler_segments),
-        'proximity': candidate_roads.proximity.tolist() + [False]*len(filler_segments)
-    })
-
+        # Create the new GeoDataFrame with the filler segments added
+        candidate_roads = gpd.GeoDataFrame({
+            'geometry': candidate_roads.geometry.tolist() + filler_segments,
+            'score': candidate_roads.score.tolist() + [-1]*len(filler_segments),
+            'proximity': candidate_roads.proximity.tolist() + [False]*len(filler_segments)
+        })
 
     # Reproject LineStrings to original raster CRS
     print("Reprojecting ...")
@@ -530,6 +537,7 @@ def desCartes(map_directory,
             print('Showing images ...')
             cv2.imshow("Binary Image", binary_image)
             cv2.imshow('skeleton', skeleton) 
+            cv2.imshow('likely_roads_visualisation', likely_roads_visualisation) 
             cv2.imshow('proximity_visualisation', proximity_visualisation) 
             cv2.imshow('candidate_roads', visualisation) 
             cv2.waitKey(0)
