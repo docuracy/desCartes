@@ -51,8 +51,9 @@ METHOD = 'road_contours'
 
 RASTER_TILE_KEY = 'ySlCyGP2kmmfm9Dgtiqj' # TO USE THE URL GIVEN BELOW, GET YOUR OWN KEY FROM https://cloud.maptiler.com/account/keys/
 # RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb10k1888/{z}/{x}/{y}.jpg?key=' + RASTER_TILE_KEY
+RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb63k1955/{z}/{x}/{y}.jpg?key=ySlCyGP2kmmfm9Dgtiqj'
 # RASTER_TILE_ZOOM = 17
-RASTER_TILE_URL = 'https://overlays.humap.site/layersoflondon/os_drawings/{z}/{x}/{y}.png'
+# RASTER_TILE_URL = 'https://overlays.humap.site/layersoflondon/os_drawings/{z}/{x}/{y}.png'
 RASTER_TILE_ZOOM = 15
 
 ## The ROADFILE must contain LineStrings only, reprojected if necessary to EPSG:4326 (WGS84)
