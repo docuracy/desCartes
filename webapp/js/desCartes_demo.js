@@ -9,6 +9,7 @@ function spinner(toggle = true) {
     $(".spinner div").toggle((!typeof toggle === "string" || toggle === "") && toggle);
     if (typeof toggle === "string") $("#spinner-text").text(toggle);
     $(".spinner-overlay").toggle(typeof toggle === "string" || toggle);
+    $(".spinner-overlay span.close-button").toggle(typeof toggle === "string" && toggle !== "");
 }
 
 function updateButton(rect) {
@@ -100,7 +101,7 @@ function showCandidateLines(response) {
 
 $(document).ready(function() {
     spinner(true);
-    $(".spinner-overlay button").click(function() {
+    $(".spinner-overlay button, .spinner-overlay span.close-button").click(function() {
         spinner(false);
     });
 

@@ -158,6 +158,10 @@ body {
     box-shadow: 2px 2px rgb(0 0 0 / 25%);
 }
 
+span.close-button {
+	display: none;
+}
+
 .overlay {
     position: fixed;
     top: 0;
