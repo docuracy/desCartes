@@ -28,16 +28,16 @@ def get_desCartes():
                 EXTENT = [float(x) for x in EXTENT]
                 
                 RASTER_TILE_URL = request.args.get('url')
-                RASTER_TILE_ZOOM = request.args.get('zoom')
+                RASTER_TILE_ZOOM = int(request.args.get('zoom'))
                 MODERN_ROADFILE = request.args.get('modern_roads')
                 
                 LOCATION_NAME = re.sub(r'https://|[{}/.?]', '-', RASTER_TILE_URL+ '-' + bounds).replace(',', '_').strip('-')
                 OUTPUTDIR = './output/' + LOCATION_NAME + '/'
                 GEOTIFF_NAME = 'geo.tiff'
                     
-                # if not os.path.exists(OUTPUTDIR + GEOTIFF_NAME):
-                #     create_geotiff (RASTER_TILE_URL, OUTPUTDIR, GEOTIFF_NAME, EXTENT, RASTER_TILE_ZOOM)
-                #     extract_modern_roads(DATADIR, OUTPUTDIR, MODERN_ROADFILE, LOCATION_NAME, EXTENT)
+                if not os.path.exists(OUTPUTDIR + GEOTIFF_NAME):
+                    create_geotiff (RASTER_TILE_URL, OUTPUTDIR, GEOTIFF_NAME, EXTENT, RASTER_TILE_ZOOM)
+                    extract_modern_roads(DATADIR, OUTPUTDIR, MODERN_ROADFILE, LOCATION_NAME, EXTENT)
                 
                 _, _, base64_images, vector_json, message = desCartes(OUTPUTDIR, **args)
                 
