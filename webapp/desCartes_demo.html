@@ -42,14 +42,20 @@
 			  <label for="gap_close" title="Gaps between likely road shapes are closed if up to this size (in pixels).">Gap Close Maximum:</label>
 			  <select id="gap_close" name="gap_close"></select><br/>
 			  <label for="shape_filter" title="Enable or disable filtering based on the map shapes' characteristics.">Shape filtering:</label>
-			  <input type="checkbox" id="shape_filter" name="shape_filter"><br/>
+			  <select id="shape_filter" name="shape_filter">
+				  <option value="False">No</option>
+				  <option value="True" selected>Yes</option>
+			  </select><br/>
 			  <div id="shape_filter_parameters">
 				  <label for="convexity_min" title="Convexity is the ratio of a shape's area to the area of the polygon traced by its external points, a value between 0 and 1. Shapes rejected by this criterion are coloured green on the resulting segmentation map.">Convexity Minimum:</label>
 				  <input type="number" id="convexity_min" name="convexity_min"><br/>
 				  <label for="inflation_factor" title="Inflation is the ratio of a shape's area to the its area when thinned to 1 pixel width. Shapes are rejected if their inflation is less than the Minimum Road Width parameter or greater that area (in pixels) is less than this Inflation Factor multiplied by the Maximum Road Width parameter. Shapes rejected by this criterion are coloured purple on the resulting segmentation map.">Inflation Factor:</label>
 				  <input type="number" id="inflation_factor" name="inflation_factor"><br/>
 				  <label for="templating" title="In this demonstration, templates have been installed representing broadleaf and conifer trees on GB Ordnance Survey maps. Selecting this option can help to discriminate between roads and areas of woodland. Shapes rejected by this criterion are coloured yellow on the resulting segmentation map.">Templating:</label>
-				  <input type="checkbox" id="templating" name="templating"><br/>
+				  <select id="templating" name="templating">
+					  <option value="False" selected>No</option>
+					  <option value="True">Yes</option>
+				  </select><br/>
 				  <label for="maximum_tree_density" title="This number is used in templating to determine whether the presence of trees should be interpreted as indicating woodland.">Maximum Tree Density:</label>
 				  <input type="number" id="maximum_tree_density" name="maximum_tree_density">
 			  </div>

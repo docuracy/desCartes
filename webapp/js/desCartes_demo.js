@@ -185,7 +185,7 @@ $(document).ready(function() {
 	});
 	
 	$("#shape_filter").change(function() {
-		$("#shape_filter_parameters").toggle($("#shape_filter").is(":checked"));
+		$("#shape_filter_parameters").toggle($("#shape_filter").val() == "True");
 	})
 
 	function populateDropdown() { // with descriptions and urls from the JSON
@@ -217,7 +217,7 @@ $(document).ready(function() {
 	    $('#zoom').val(defaults.zoom);
 	    $('#modern_roads').val(defaults.modern_roads);
 
-		$("#shape_filter_parameters").toggle($("#shape_filter").is(":checked"));
+		$("#shape_filter_parameters").toggle($("#shape_filter").val() == "True");
 	
 	    if (rect !== false) {
 			rect.remove();
