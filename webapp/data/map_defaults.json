@@ -12,10 +12,10 @@
       "MIN_ROAD_WIDTH": 6,
       "min_size_factor": 10,
       "gap_close": 20,
-	  "shape_filter": true,
+	  "shape_filter": "True",
       "convexity_min": 0.9,
       "inflation_factor": 2.3,
-      "templating": true,
+      "templating": "True",
       "maximum_tree_density": 0.1
     },
     {
@@ -31,10 +31,10 @@
       "MIN_ROAD_WIDTH": 3,
       "min_size_factor": 7,
       "gap_close": 10,
-	  "shape_filter": true,
+	  "shape_filter": "True",
       "convexity_min": 0.9,
       "inflation_factor": 2.3,
-      "templating": false,
+      "templating": "False",
       "maximum_tree_density": 0.1
     },
     {
@@ -50,10 +50,10 @@
       "MIN_ROAD_WIDTH": 6,
       "min_size_factor": 10,
       "gap_close": 20,
-	  "shape_filter": true,
+	  "shape_filter": "True",
       "convexity_min": 0.9,
       "inflation_factor": 2.3,
-      "templating": false,
+      "templating": "False",
       "maximum_tree_density": 0.1
     },
     {
@@ -69,10 +69,10 @@
       "MIN_ROAD_WIDTH": 6,
       "min_size_factor": 10,
       "gap_close": 20,
-	  "shape_filter": true,
+	  "shape_filter": "True",
       "convexity_min": 0.9,
       "inflation_factor": 2.3,
-      "templating": false,
+      "templating": "False",
       "maximum_tree_density": 0.1
     }
 ]

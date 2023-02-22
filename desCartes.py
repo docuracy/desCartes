@@ -224,7 +224,7 @@ def desCartes(map_directory,
                 visualisation_contoursets["over-inflation"][2].append(contour) # Teal for over-inflation rejection
                 continue # Reject contour                
             
-            if templating: # (Woodland templates rather than road templates)
+            if templating == True: # (Woodland templates rather than road templates)
                 
                 ## Try testing woodland density using matchTemplate
                 mask = emmentaler.astype(bool)

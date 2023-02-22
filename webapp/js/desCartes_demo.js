@@ -210,8 +210,8 @@ $(document).ready(function() {
 	    $('#min_size_factor').val(defaults.min_size_factor);
 	    $('#inflation_factor').val(defaults.inflation_factor);
 	    $('#gap_close').val(defaults.gap_close);
-	    $('#templating').prop('checked', defaults.templating);
-	    $('#shape_filter').prop('checked', defaults.shape_filter);
+	    $('#templating').val(defaults.templating);
+	    $('#shape_filter').val(defaults.shape_filter);
 	    $('#maximum_tree_density').val(defaults.maximum_tree_density);
 	    $('#url').val(defaults.url);
 	    $('#zoom').val(defaults.zoom);
