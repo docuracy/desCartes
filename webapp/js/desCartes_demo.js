@@ -170,7 +170,7 @@ $(document).ready(function() {
 	let tiles = false;
 	let rect = false;
 
-	$.getJSON('./../data/map_defaults.json', function(data) {
+	$.getJSON('./data/map_defaults.json', function(data) {
 	    defaultValues = data;
 	    populateDropdown();
 	    populateForm();
