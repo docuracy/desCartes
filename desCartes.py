@@ -95,21 +95,21 @@ def desCartes(map_directory,
     
     # Necessary to handle parameters passed as strings in URL
     def cast_params(binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, 
-                convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, 
-                visualise, show_images):
-                binary_image = False if binary_image == "False" else True
-                blur_size = int(blur_size)
-                binarization_threshold = int(binarization_threshold)
-                MAX_ROAD_WIDTH = float(MAX_ROAD_WIDTH)
-                MIN_ROAD_WIDTH = float(MIN_ROAD_WIDTH)
-                convexity_min = float(convexity_min)
-                min_size_factor = int(min_size_factor)
-                inflation_factor = float(inflation_factor)
-                gap_close = int(gap_close)
-                maximum_tree_density = float(maximum_tree_density)
-                visualise = False if visualise == "False" else True
-                show_images = False if show_images == "False" else True
-                return binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, visualise, show_images
+        convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, 
+        visualise, show_images):
+        binary_image = False if binary_image == "False" else True
+        blur_size = int(blur_size) if isinstance(blur_size, str) else blur_size
+        binarization_threshold = int(binarization_threshold) if isinstance(binarization_threshold, str) else binarization_threshold
+        MAX_ROAD_WIDTH = int(MAX_ROAD_WIDTH) if isinstance(MAX_ROAD_WIDTH, str) else MAX_ROAD_WIDTH
+        MIN_ROAD_WIDTH = int(MIN_ROAD_WIDTH) if isinstance(MIN_ROAD_WIDTH, str) else MIN_ROAD_WIDTH
+        convexity_min = float(convexity_min) if isinstance(convexity_min, str) else convexity_min
+        min_size_factor = int(min_size_factor) if isinstance(min_size_factor, str) else min_size_factor
+        inflation_factor = float(inflation_factor) if isinstance(inflation_factor, str) else inflation_factor
+        gap_close = int(gap_close) if isinstance(gap_close, str) else gap_close
+        maximum_tree_density = float(maximum_tree_density) if isinstance(maximum_tree_density, str) else maximum_tree_density
+        visualise = False if visualise == "False" else True
+        show_images = False if show_images == "False" else True
+        return binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, visualise, show_images
 
     binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, visualise, show_images = cast_params(binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, visualise, show_images)
     
