@@ -422,7 +422,7 @@ def desCartes(map_directory,
             continue
         count = 0
         for subarr in prox:
-            if subarr[3] is not False and subarr[4] is not False: # Road lines on both sides
+            if subarr[3] is not False and subarr[4] is not False and subarr[3] + subarr[4] + 1 >= MIN_ROAD_WIDTH: # Road lines on both sides
                 count += 1 if subarr[1] is not False else .7 # Modern road proximity
         scores.append(count / len(prox))
         
