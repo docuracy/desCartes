@@ -13,15 +13,7 @@ from extract_modern_roads import extract_modern_roads
 from desCartes import desCartes
 import re
 
-RASTER_TILE_KEY = 'ySlCyGP2kmmfm9Dgtiqj' # TO USE THE URL GIVEN BELOW, GET YOUR OWN KEY FROM https://cloud.maptiler.com/account/keys/
-RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb10k1888/{z}/{x}/{y}.jpg?key=' + RASTER_TILE_KEY
-RASTER_TILE_ZOOM = 17
-
-MAX_ROAD_WIDTH = 15  # Pixel width of road between border lines. Should be an odd number
-MIN_ROAD_WIDTH = 3 # Should be an odd number
-
 DATADIR = './data/'
-MODERN_ROADFILE = 'OS_Open_Roads_no-motorways_EPSG4326.gpkg'
 
 app = Flask(__name__)
 
@@ -29,11 +21,15 @@ app = Flask(__name__)
 def get_desCartes():
     try:
         if request.method == 'GET':
-            args = {k: v for k, v in request.args.items() if k != 'bounds'}
+            args = {k: v for k, v in request.args.items() if k not in ['bounds', 'url', 'zoom', 'modern_roads', 'default_values_dropdown']}
             bounds = request.args.get('bounds')
             if bounds:
                 EXTENT = bounds.split(",")
                 EXTENT = [float(x) for x in EXTENT]
+                
+                RASTER_TILE_URL = request.args.get('url')
+                RASTER_TILE_ZOOM = request.args.get('zoom')
+                MODERN_ROADFILE = request.args.get('modern_roads')
                 
                 LOCATION_NAME = re.sub(r'https://|[{}/.?]', '-', RASTER_TILE_URL+ '-' + bounds).replace(',', '_').strip('-')
                 OUTPUTDIR = './output/' + LOCATION_NAME + '/'
@@ -43,7 +39,7 @@ def get_desCartes():
                     create_geotiff (RASTER_TILE_URL, OUTPUTDIR, GEOTIFF_NAME, EXTENT, RASTER_TILE_ZOOM)
                     extract_modern_roads(DATADIR, OUTPUTDIR, MODERN_ROADFILE, LOCATION_NAME, EXTENT)
                 
-                _, _, base64_images, vector_json = desCartes(OUTPUTDIR, **args)
+                _, _, base64_images, vector_json, message = desCartes(OUTPUTDIR, **args)
                 
                 # Clean up output directory
                 now = datetime.datetime.now()
@@ -53,7 +49,7 @@ def get_desCartes():
                     if os.path.isdir(path) and datetime.datetime.fromtimestamp(os.path.getctime(path)) < cutoff:
                         shutil.rmtree(path)
                         
-                return jsonify({"base64_images": base64_images, "GeoPackage": vector_json})
+                return jsonify({"base64_images": base64_images, "GeoPackage": vector_json, "message": message})
             else:
                 return jsonify({"message": "No bounds found in the request."})
         else:

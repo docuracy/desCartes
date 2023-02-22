@@ -65,25 +65,27 @@ body {
 }
 
 #road-parameters label {
-    width: 60%;
     display: inline-block;
     text-align: right;
-    margin-right: 10px;
 }
 
 #road-parameters input[type=number], #road-parameters input[type=text], #road-parameters select {
-    width: 30%;
     text-align: right;
     margin-right: 0;
 }
 
-input[type="checkbox"] {
-	margin-right: 25%;
+#road-parameters input[type=number] {
+	width: 43px;
+	padding: 0px;
 }
 
 #toggleForm {
 	float: right;
     margin-top: 8px;
+}
+
+#custom-inputs {
+	display: none;
 }
 
 .tooltip-mark {
@@ -166,7 +168,6 @@ input[type="checkbox"] {
     z-index: 9999;
 }
 
-
 .spinner-overlay {
   display: none;
   position: fixed;
@@ -194,7 +195,7 @@ input[type="checkbox"] {
   height: 100%;
 }
 
-.spinner > div.spinner-bounce {
+.spinner > div {
   width: 40px;
   height: 40px;
   background-color: var(--modal-font-color);

@@ -3,3 +3,4 @@ data/oproad_gb_linestrings.gpkg
 data/OS_Open_Roads_LineStrings_WGS84.gpkg
 data/OS_Open_Roads_no-motorways_EPSG4326.gpkg
 data/OS_Open_Roads_LineStrings_ids_EPSG4326.gpkg
+data/OS_Open_Roads_no-motorways_EPSG4326_singleparts.gpkg

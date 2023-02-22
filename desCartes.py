@@ -238,6 +238,9 @@ def desCartes(map_directory,
             
     print(str(len(likely_roads)) + ' candidate road areas found.')
     
+    if len(likely_roads) == 0:
+        return contours, False, base64_images, False, 'No candidate road areas found.'
+    
     likely_roads = sum(likely_roads)
     
     # ## Next, dilate/erode to close any *small* gaps in road sections

@@ -74,7 +74,10 @@ function showCandidateLines(response) {
         });
     });
 
-    $("<span class='comment'>To improve results, you may need to adjust the parameters before processing.</span>").appendTo(thumbnailsContainer);
+    if (response.message !== '') {
+		$("<span class='comment'>" + response.message + "</span>").appendTo(thumbnailsContainer);
+    }
+	$("<span class='comment'>To improve results, you may need to adjust the parameters before processing.</span>").appendTo(thumbnailsContainer);
     var downloadButton = $("<button class='download'>").text("Download GeoPackage").appendTo(thumbnailsContainer);
     downloadButton.click(function() {
         var binary = atob(response.GeoPackage.gpkg);
@@ -103,31 +106,6 @@ $(document).ready(function() {
 
     var map = L.map('map');
 
-    var rect = L.rectangle([
-        [51.50083068350566, -2.351390649563276],
-        [51.51321498717301, -2.3244272838851536]
-    ], {
-        color: "#ff7800",
-        weight: 1
-    }).addTo(map);
-    var bounds = rect.getBounds();
-    map.fitBounds(bounds);
-    rect.editing.enable();
-    $("#instructions span").text(function(i, text) {
-        return text.replace("***", MAX_ALLOWED_AREA);
-    });
-    updateButton(rect);
-
-    L.tileLayer('https://api.maptiler.com/tiles/uk-osgb10k1888/{z}/{x}/{y}.jpg?key=ySlCyGP2kmmfm9Dgtiqj', {
-        attribution: 'Map &copy; National Library of Scotland',
-        maxZoom: 18
-    }).addTo(map);
-
-    // Event listener to monitor changes in rectangle
-    rect.on('edit', function() {
-        updateButton(rect);
-    });
-
     $("#send").click(function() {
         spinner("");
         var bounds = rect.getBounds();
@@ -141,7 +119,7 @@ $(document).ready(function() {
                 if (response && response.base64_images && response.base64_images.length > 0) {
                     showCandidateLines(response)
                 } else {
-                    spinner("Sorry, something went wrong. The server returned an unexpected response.");
+                    spinner("Sorry, something went wrong. The server returned an unexpected response. [" + response.error + "]");
                 }
             },
             error: function(jqXHR, textStatus, errorThrown) {
@@ -164,28 +142,100 @@ $(document).ready(function() {
         $(this).text($(this).text() == "Adjust Parameters" ? "Hide Parameters" : "Adjust Parameters");
     }).click();
 
+    $("#road-parameters label").each(function() {
+        $(this).append("<sup class='tooltip-mark'>?</sup>");
+    });
+
     for (i = 1; i <= 11; i += 2) {
         $('#blur_size').append($("<option>", {
             value: i,
-            text: i,
-            selected: (i == 3)
+            text: i
         }));
     }
     for (i = 0; i <= 254; i++) {
         $('#binarization_threshold').append($("<option>", {
             value: i,
-            text: i,
-            selected: (i == 210)
+            text: i
         }));
     }
     for (i = 0; i <= 30; i++) {
         $('#gap_close').append($("<option>", {
             value: i,
-            text: i,
-            selected: (i == 20)
+            text: i
         }));
     }
-    $("#road-parameters label").each(function() {
-        $(this).append("<sup class='tooltip-mark'>?</sup>");
-    });
+
+	let defaultValues = {};
+  	let selectedIndex = 0;
+	let tiles = false;
+	let rect = false;
+
+	$.getJSON('./../data/map_defaults.json', function(data) {
+	    defaultValues = data;
+	    populateDropdown();
+	    populateForm();
+	});
+	
+	$('#custom-url').on("blur", function() {
+	    const newUrl = this.value;
+		tiles = L.tileLayer(newUrl, {
+	        maxZoom: 18
+	    }).addTo(map);
+	});
+
+	function populateDropdown() { // with descriptions and urls from the JSON
+	    const dropdown = $('#default_values_dropdown');
+	    for (let i = 0; i < defaultValues.length; i++) {
+	      dropdown.append(`<option value="${i}">${defaultValues[i].description}</option>`);
+	    }
+	    dropdown.change(function() {
+	      selectedIndex = parseInt(dropdown.val());
+	      populateForm();
+		  $('#custom-inputs').toggle(selectedIndex == defaultValues.length - 1);
+	    });
+	}
+  
+	function populateForm() { // with the default values from the JSON
+	    const defaults = defaultValues[selectedIndex];
+	    $('#blur_size').val(defaults.blur_size);
+	    $('#binarization_threshold').val(defaults.binarization_threshold);
+	    $('#MAX_ROAD_WIDTH').val(defaults.MAX_ROAD_WIDTH);
+	    $('#MIN_ROAD_WIDTH').val(defaults.MIN_ROAD_WIDTH);
+	    $('#convexity_min').val(defaults.convexity_min);
+	    $('#min_size_factor').val(defaults.min_size_factor);
+	    $('#inflation_factor').val(defaults.inflation_factor);
+	    $('#gap_close').val(defaults.gap_close);
+	    $('#templating').prop('checked', defaults.templating);
+	    $('#maximum_tree_density').val(defaults.maximum_tree_density);
+	    $('#url').val(defaults.url);
+	    $('#zoom').val(defaults.zoom);
+	    $('#modern_roads').val(defaults.modern_roads);
+	
+	    if (rect !== false) {
+			rect.remove();
+		}
+	    rect = L.rectangle(defaults.start_extent, {
+	        color: "#ff7800",
+	        weight: 1
+	    }).addTo(map);
+	    var bounds = rect.getBounds();
+	    map.fitBounds(bounds);
+	    rect.editing.enable();
+	    $("#instructions span").text(function(i, text) {
+	        return text.replace("***", MAX_ALLOWED_AREA);
+	    });
+	    updateButton(rect);
+	    rect.on('edit', function() {
+	        updateButton(rect);
+	    });
+	
+	    if (tiles !== false) {
+			tiles.remove();
+		}
+		tiles = L.tileLayer(defaults.url, {
+	        attribution: defaults.attribution,
+	        maxZoom: 18
+	    }).addTo(map);
+	}
+
 });

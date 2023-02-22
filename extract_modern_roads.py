@@ -23,16 +23,17 @@ def transform_linestrings(directory, transformation):
     
     return gdf, transformed_gdf # as a GeoDataFrame 
 
-def extract_modern_roads(DATADIR, OUTPUTDIR, ROADFILE, LOCATION_NAME, EXTENT, shapefile = False):
+def extract_modern_roads(DATADIR, OUTPUTDIR, ROADFILE, LOCATION_NAME, EXTENT, shapefile=False):
     
     gdf = gpd.read_file(
         DATADIR + ROADFILE,
-        layer = os.path.splitext(ROADFILE)[0],
-        bbox = tuple(EXTENT)
+        layer=os.path.splitext(ROADFILE)[0],
+        bbox=tuple(EXTENT)
     )
-    # Specifiy EXTENT above does not cause linestrings partly within the extent to be cropped to the extent
+    # Specifying EXTENT above does not cause linestrings partly within the extent to be cropped to the extent
     cropped_gdf = gpd.clip(gdf, box(*EXTENT))
     cropped_gdf = cropped_gdf[~cropped_gdf.is_empty]
+    cropped_gdf = cropped_gdf.explode(index_parts=True)  # Cropping can cause creation of multiparts 
     cropped_gdf.to_file(OUTPUTDIR + 'modern_roads.gpkg', driver="GPKG")
     if shapefile:
         root, _ = os.path.splitext(ROADFILE)

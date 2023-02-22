@@ -19,27 +19,37 @@
 			<button id="donate" title="Development and server costs are entirely self-funded. Please donate if you can!">£ Donate</button>
 			<a id="toggleForm" href="#">Hide Parameters</a>
 			<form id="road-parameters">
+			  <label for="default_values_dropdown" title="Choose a preconfigured map source, or select CUSTOM URL to add your own.">Map:</label>
+			  <select id="default_values_dropdown" name="default_values_dropdown"></select><br/>
+			  <div id="custom-inputs">
+				  <label for="url" title="Map tile source (should be XYZ tiles).">URL:</label>
+				  <input type="url" id="url" name="url" /><br/>
+				  <label for="zoom" title="Tile zoom level for optimum clarity.">Map Zoom:</label>
+				  <input type="number" id="zoom" name="zoom" /><br/>
+				  <label for="modern_roads" title="GeoPackage containing modern road LineStrings (not MultiLineStrings). Must be pre-installed on server.">Modern Roads:</label>
+				  <input type="text" id="modern_roads" name="modern_roads" /><br/>
+			  </div>
 			  <label for="blur_size" title="Used to try to remove blemishes from image - greatly reduces number of spurious contours and consequent processing-time.">Blur Size:</label>
-			  <select id="blur_size" name="blur_size"></select>
+			  <select id="blur_size" name="blur_size"></select><br/>
 			  <label for="binarization_threshold" title="This sets the threshold for converting the image to black and white. Higher values allow lighter shades of grey to be interpreted as black.">Binarization Threshold:</label>
-			  <select id="binarization_threshold" name="binarization_threshold"></select>
+			  <select id="binarization_threshold" name="binarization_threshold"></select><br/>
 			  <label for="MAX_ROAD_WIDTH" title="Estimate of the maximum road width in pixels.">Maximum Road Width:</label>
-			  <input type="number" id="MAX_ROAD_WIDTH" name="MAX_ROAD_WIDTH" value="20">
+			  <input type="number" id="MAX_ROAD_WIDTH" name="MAX_ROAD_WIDTH"><br/>
 			  <label for="MIN_ROAD_WIDTH" title="Estimate of the minimum road width in pixels.">Minimum Road Width:</label>
-			  <input type="number" id="MIN_ROAD_WIDTH" name="MIN_ROAD_WIDTH" value="6">
+			  <input type="number" id="MIN_ROAD_WIDTH" name="MIN_ROAD_WIDTH"><br/>
 			  <label for="convexity_min" title="Convexity is the ratio of a shape's area to the area of the polygon traced by its external points, a value between 0 and 1. Shapes rejected by this criterion are coloured green on the resulting segmentation map.">Convexity Minimum:</label>
-			  <input type="number" id="convexity_min" name="convexity_min" value=".9">
+			  <input type="number" id="convexity_min" name="convexity_min"><br/>
 			  <label for="min_size_factor" title="Shapes are rejected if their area (in pixels) is less than this number multiplied by the square of the Maximum Road Width parameter. Shapes rejected by this criterion are coloured grey on the resulting segmentation map.">Minimum Size Factor:</label>
-			  <input type="number" id="min_size_factor" name="min_size_factor" value="10">
+			  <input type="number" id="min_size_factor" name="min_size_factor"><br/>
 			  <label for="inflation_factor" title="Inflation is the ratio of a shape's area to the its area when thinned to 1 pixel width. Shapes are rejected if their inflation is less than the Minimum Road Width parameter or greater that area (in pixels) is less than this Inflation Factor multiplied by the Maximum Road Width parameter. Shapes rejected by this criterion are coloured purple on the resulting segmentation map.">Inflation Factor:</label>
-			  <input type="number" id="inflation_factor" name="inflation_factor" value="2.3">
+			  <input type="number" id="inflation_factor" name="inflation_factor"><br/>
 			  <label for="gap_close" title="Gaps between likely road shapes are closed if up to this size (in pixels).">Gap Close Maximum:</label>
-			  <select id="gap_close" name="gap_close"></select>
+			  <select id="gap_close" name="gap_close"></select><br/>
 			  <label for="templating" title="In this demonstration, templates have been installed representing broadleaf and conifer trees on GB Ordnance Survey maps. Selecting this option can help to discriminate between roads and areas of woodland. Shapes rejected by this criterion are coloured yellow on the resulting segmentation map.">Templating:</label>
-			  <input type="checkbox" id="templating" name="templating" value="True" checked>
+			  <input type="checkbox" id="templating" name="templating"><br/>
 			  <label for="maximum_tree_density" title="This number is used in templating to determine whether the presence of trees should be interpreted as indicating woodland.">Maximum Tree Density:</label>
-			  <input type="number" id="maximum_tree_density" name="maximum_tree_density" value=".1">
-			</form>																			
+			  <input type="number" id="maximum_tree_density" name="maximum_tree_density">
+			</form>							
 			<div class="spinner-overlay">
 				<div class="spinner">
 					<div class="spinner-bounce bounce1"></div>

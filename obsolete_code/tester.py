@@ -32,15 +32,16 @@ from desCartes import desCartes
 # A simple way to get the extent coordinates is to open a Google map in a browser,
 # then right-click on the south-west corner of the area of interest. Then click on 
 # the displayed coordinates and then paste them below. Repeat for the north-east corner.
-EXTENT_SOUTHWEST_LAT, EXTENT_SOUTHWEST_LNG = 51.503272177293546, -2.347745627052636,
-EXTENT_NORTHEAST_LAT, EXTENT_NORTHEAST_LNG = 51.51207333180604, -2.3292914006855354
+EXTENT_SOUTHWEST_LAT, EXTENT_SOUTHWEST_LNG = 51.41341487745755, -0.3813548954795963,
+EXTENT_NORTHEAST_LAT, EXTENT_NORTHEAST_LNG = 51.42733151852389, -0.3611825283458425
 
 ## The location name will be used to name the directory where files are stored.
 ## If a geotiff already exist in this directory, it will be re-used, and the coordinates given above ignored.
 # LOCATION_NAME = 'longborough'
 # LOCATION_NAME = 'longborough-south'
-LOCATION_NAME = 'tormarton'
+# LOCATION_NAME = 'tormarton'
 # LOCATION_NAME = 'tolleshunt'
+LOCATION_NAME = 'hampton'
 
 ## Uncomment one of these methods, or create your own in the IMAGE PROCESSING CALLS section.
 ## Any name you type here will be used in creating a filename, so avoid funky characters.
@@ -49,13 +50,15 @@ METHOD = 'road_contours'
 # METHOD = 'development'
 
 RASTER_TILE_KEY = 'ySlCyGP2kmmfm9Dgtiqj' # TO USE THE URL GIVEN BELOW, GET YOUR OWN KEY FROM https://cloud.maptiler.com/account/keys/
-RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb10k1888/{z}/{x}/{y}.jpg?key=' + RASTER_TILE_KEY
-RASTER_TILE_ZOOM = 17
+# RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb10k1888/{z}/{x}/{y}.jpg?key=' + RASTER_TILE_KEY
+# RASTER_TILE_ZOOM = 17
+RASTER_TILE_URL = 'https://overlays.humap.site/layersoflondon/os_drawings/{z}/{x}/{y}.png'
+RASTER_TILE_ZOOM = 15
 
 ## The ROADFILE must contain LineStrings only, reprojected if necessary to EPSG:4326 (WGS84)
 ## It should be placed in the DATADIR defined below.
 ## The file used here is too large to store on GitHub. It can be extracted from data downloadable from https://beta.ordnancesurvey.co.uk/products/os-open-roads
-ROADFILE = 'OS_Open_Roads_LineStrings_WGS84.gpkg'
+ROADFILE = 'OS_Open_Roads_no-motorways_EPSG4326.gpkg'
 MAX_MODERN_OFFSET = 300 # Maximum allowable offset (degrees*1000, approximately metres)
 MAX_GAP_CLOSURE = 3000 / 1000000 # Maximum gap to be closed on matched modernity_id (degrees: approximately metres / 1000000)
 
@@ -329,7 +332,7 @@ match METHOD:
     #     result_binary, _ = erase_areas(result_binary, raster_image_gray, 3, contours = False, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase white noise
         
     case _: # Default 
-        contours, skeleton, base64_images, vector_json = desCartes(OUTPUTDIR, template_dir = './../data/templates', show_images = True)
+        contours, skeleton, base64_images, vector_json, message = desCartes(OUTPUTDIR, template_dir = './../data/templates', show_images = True)
         
 # Attempt to bridge gaps in skeleton by dilation and re-skeletonization
 # def skeleton_contours(skeleton_binary, gap = 15, step = 1, SHOW_IMAGES = False): # Larger steps run risk of blurring
