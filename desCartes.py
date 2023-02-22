@@ -32,6 +32,7 @@ import geopandas as gpd
 from extract_modern_roads import transform_linestrings
 import io
 import itertools
+from sklearn.preprocessing import MinMaxScaler
 
 def draw_linestrings_on_image(bgr_image, linestring_gdf, linestring_color, linestring_thickness):
     for _, linestring in linestring_gdf.iterrows():
@@ -413,7 +414,7 @@ def desCartes(map_directory,
     
     print("Scoring ...")
     scores = []
-    for prox in proximity:
+    for lineString, prox in zip(lineStrings, proximity):
         if len(prox) == 0:
             scores.append(0)
             continue
@@ -424,11 +425,41 @@ def desCartes(map_directory,
         for subarr in prox:
             if subarr[3] is not False and subarr[4] is not False and subarr[3] + subarr[4] + 1 >= MIN_ROAD_WIDTH: # Road lines on both sides
                 count += 1 if subarr[1] is not False else .7 # Modern road proximity
-        scores.append(count / len(prox))
         
+        non_circularity = Point(lineString.coords[0]).distance(Point(lineString.coords[-1])) / lineString.length
+        
+        scores.append(count * non_circularity / len(prox))     
+           
     # Combine arrays in a GeoDataFrame
     candidate_roads = gpd.GeoDataFrame({'geometry': lineStrings, 'score': scores, 'proximity': proximity})
-    
+
+    # print("Assessing connectivity ...")
+    #
+    # candidate_roads_filtered = candidate_roads[candidate_roads['score'] > 0.4]
+    # candidate_roads_filtered['orig_idx'] = candidate_roads_filtered.index
+    # sindex = candidate_roads_filtered.sindex
+    #
+    # connectivity = []
+    # for idx, row in candidate_roads_filtered.iterrows():
+    #     connectivity.append(np.inf)
+    #     line = row['geometry']
+    #     # Create 20px buffer around each endpoint of the line
+    #     for point in [Point(line.coords[0]), Point(line.coords[-1])]:
+    #         closest = list(sindex.nearest(box(point.x - 20, point.y - 20, point.x + 20, point.y + 20)))
+    #         # Update proximity value for the original line based on distance to closest lines
+    #         connectivity[-1] = min(connectivity[-1], min([line.distance(candidate_roads_filtered.loc[candidate_idx, 'geometry']) for candidate_idx in closest if candidate_idx != idx]))
+    #
+    # # Calculate inverse connectivity values
+    # connectivity_inv = 1 / np.array(connectivity)
+    # scaler = MinMaxScaler(feature_range=(0.2, 1))
+    # candidate_roads_filtered['connectivity'] = scaler.fit_transform(connectivity_inv.reshape(-1, 1)).flatten()
+    #
+    # for idx, row in candidate_roads_filtered.iterrows():
+    #     candidate_roads.loc[row['orig_idx'], 'score'] = candidate_roads.loc[row['orig_idx'], 'score'] * row['connectivity']
+
+
+    # candidate_roads['score'][candidate_roads_filtered.index.get_level_values(0)] = connectivity
+
     if shape_filter == True: # Process too time-consuming if shapes have not been filtered
     
         ## Fill gaps in candidate road network
