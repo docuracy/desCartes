@@ -515,4 +515,4 @@ def desCartes(map_directory,
             cv2.waitKey(0)
     
     print('... completed.')
-    return contours, skeleton, base64_images, vector_json, message
+    return contours, skeleton, base64_images, vector_json, ''
