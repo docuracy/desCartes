@@ -32,16 +32,16 @@ from desCartes import desCartes
 # A simple way to get the extent coordinates is to open a Google map in a browser,
 # then right-click on the south-west corner of the area of interest. Then click on 
 # the displayed coordinates and then paste them below. Repeat for the north-east corner.
-EXTENT_SOUTHWEST_LAT, EXTENT_SOUTHWEST_LNG = 51.41341487745755, -0.3813548954795963,
-EXTENT_NORTHEAST_LAT, EXTENT_NORTHEAST_LNG = 51.42733151852389, -0.3611825283458425
+EXTENT_SOUTHWEST_LAT, EXTENT_SOUTHWEST_LNG = 51.50269790151397, -2.3436694025372837,
+EXTENT_NORTHEAST_LAT, EXTENT_NORTHEAST_LNG = 51.51241968342722, -2.327874350910519
 
 ## The location name will be used to name the directory where files are stored.
 ## If a geotiff already exist in this directory, it will be re-used, and the coordinates given above ignored.
 # LOCATION_NAME = 'longborough'
 # LOCATION_NAME = 'longborough-south'
-# LOCATION_NAME = 'tormarton'
+LOCATION_NAME = 'tormarton'
 # LOCATION_NAME = 'tolleshunt'
-LOCATION_NAME = 'hampton'
+# LOCATION_NAME = 'hampton'
 
 ## Uncomment one of these methods, or create your own in the IMAGE PROCESSING CALLS section.
 ## Any name you type here will be used in creating a filename, so avoid funky characters.
@@ -50,11 +50,11 @@ METHOD = 'road_contours'
 # METHOD = 'development'
 
 RASTER_TILE_KEY = 'ySlCyGP2kmmfm9Dgtiqj' # TO USE THE URL GIVEN BELOW, GET YOUR OWN KEY FROM https://cloud.maptiler.com/account/keys/
-# RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb10k1888/{z}/{x}/{y}.jpg?key=' + RASTER_TILE_KEY
-RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb63k1955/{z}/{x}/{y}.jpg?key=ySlCyGP2kmmfm9Dgtiqj'
-# RASTER_TILE_ZOOM = 17
+RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb10k1888/{z}/{x}/{y}.jpg?key=' + RASTER_TILE_KEY
+# RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb63k1955/{z}/{x}/{y}.jpg?key=ySlCyGP2kmmfm9Dgtiqj'
+RASTER_TILE_ZOOM = 17
 # RASTER_TILE_URL = 'https://overlays.humap.site/layersoflondon/os_drawings/{z}/{x}/{y}.png'
-RASTER_TILE_ZOOM = 15
+# RASTER_TILE_ZOOM = 15
 
 ## The ROADFILE must contain LineStrings only, reprojected if necessary to EPSG:4326 (WGS84)
 ## It should be placed in the DATADIR defined below.

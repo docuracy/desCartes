@@ -140,7 +140,8 @@ def desCartes(map_directory,
     height, width = binary_image.shape[:2]
 
     base64_images = []
-    base64_images.append({"label": "Thresholded map image", "image": base64.b64encode(cv2.imencode('.jpg', binary_image)[1]).decode("utf-8")})      
+    if visualise:
+        base64_images.append({"label": "Thresholded map image", "image": base64.b64encode(cv2.imencode('.jpg', binary_image)[1]).decode("utf-8")})      
      
     # Thin all black lines to 1px
     binary_image = np.invert(binary_image)  
@@ -169,7 +170,8 @@ def desCartes(map_directory,
             contour_validity.append(False)
             contour_areas.append(0)   
     
-    base64_images.append({"label": "Thinned map image", "image": base64.b64encode(cv2.imencode('.jpg', binary_image)[1]).decode("utf-8")})
+    if visualise:
+        base64_images.append({"label": "Thinned map image", "image": base64.b64encode(cv2.imencode('.jpg', binary_image)[1]).decode("utf-8")})
     
     print("Testing and filtering shapes ...")
     likely_roads = []
@@ -251,8 +253,19 @@ def desCartes(map_directory,
     ## Skeletonize
     print("Skeletonizing ...")
     skeleton = skeletonize(likely_roads / 255.).astype(np.uint8) * 255
-    base64_images.append({"label": "Skeletonized likely roads", "image": base64.b64encode(cv2.imencode('.jpg', skeleton)[1]).decode("utf-8")}) 
-    
+    if visualise:
+        likely_roads_visualisation = cv2.cvtColor(grayscale_image, cv2.COLOR_GRAY2BGRA)
+        overlay = np.zeros((height, width, 4), dtype=np.uint8)
+        shape = overlay.copy()
+        shape[likely_roads == 255, 1:4] = 255
+        overlay[:] = np.array([0, 0, 255, 255], dtype=np.uint8) # Red
+        shaded = cv2.addWeighted(overlay, .5, likely_roads_visualisation, .5, 0) # Set opacity
+        likely_roads_visualisation = np.where(shape == 255, shaded, likely_roads_visualisation) # Draw shading
+        skeleton_mask = np.zeros_like(grayscale_image, dtype=np.uint8)
+        skeleton_mask[skeleton == 255] = 255
+        likely_roads_visualisation[skeleton_mask > 0] = (0, 255, 255, 255)
+        base64_images.append({"label": "Skeletonized likely roads", "image": base64.b64encode(cv2.imencode('.jpg', likely_roads_visualisation)[1]).decode("utf-8")})
+
 #######################
 ## VECTOR PROCESSING ##
 #######################
@@ -348,7 +361,8 @@ def desCartes(map_directory,
                         break
             previouspoint = test_point
             
-    base64_images.append({"label": "Road boundary checks (with modern OS roads)", "image": base64.b64encode(cv2.imencode('.jpg', proximity_visualisation)[1]).decode("utf-8")})
+    if visualise:
+        base64_images.append({"label": "Road boundary checks (with modern OS roads)", "image": base64.b64encode(cv2.imencode('.jpg', proximity_visualisation)[1]).decode("utf-8")})
     
     # Split at modern road boundaries and label any matched candidate roads
     print("Splitting at modern road boundaries ...")
