@@ -84,8 +84,8 @@ def desCartes(map_directory,
               min_size_factor = "10", # Multiplied by int(MAX_ROAD_WIDTH)^2 to give minimum size for a contour to be considered
               inflation_factor = "2.3", # Multiplied by int(MAX_ROAD_WIDTH) to limit average breadth of a contour perpendicular to its skeleton
               gap_close = "20", # For closing gaps between likely roads
-              shape_filter = "True",
-              templating = "True",
+              shape_filter = "on",
+              templating = "on",
               template_dir = './data/templates', 
               template_filenames = ['tree-broadleaf.png', 'tree-conifer.png'], 
               thresholds = [.7, .7],
@@ -108,8 +108,8 @@ def desCartes(map_directory,
         inflation_factor = float(inflation_factor) if isinstance(inflation_factor, str) else inflation_factor
         gap_close = int(gap_close) if isinstance(gap_close, str) else gap_close
         maximum_tree_density = float(maximum_tree_density) if isinstance(maximum_tree_density, str) else maximum_tree_density
-        shape_filter = False if shape_filter == "False" else True
-        templating = False if templating == "False" else True
+        shape_filter = True if shape_filter == "on" else False
+        templating = True if templating == "on" else False
         visualise = False if visualise == "False" else True
         show_images = False if show_images == "False" else True
         return binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, shape_filter, templating, visualise, show_images
