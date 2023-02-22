@@ -112,7 +112,7 @@ def desCartes(map_directory,
         templating = False if templating == "False" else True
         visualise = False if visualise == "False" else True
         show_images = False if show_images == "False" else True
-        return binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, visualise, show_images
+        return binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, shape_filter, templating, visualise, show_images
 
     binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, shape_filter, templating, visualise, show_images = cast_params(binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, shape_filter, templating, visualise, show_images)
     
