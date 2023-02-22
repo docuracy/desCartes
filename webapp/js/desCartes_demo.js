@@ -183,6 +183,10 @@ $(document).ready(function() {
 	        maxZoom: 18
 	    }).addTo(map);
 	});
+	
+	$("#shape_filter").change(function() {
+		$("#shape_filter_parameters").toggle($("#shape_filter").is(":checked"));
+	})
 
 	function populateDropdown() { // with descriptions and urls from the JSON
 	    const dropdown = $('#default_values_dropdown');
@@ -207,10 +211,13 @@ $(document).ready(function() {
 	    $('#inflation_factor').val(defaults.inflation_factor);
 	    $('#gap_close').val(defaults.gap_close);
 	    $('#templating').prop('checked', defaults.templating);
+	    $('#shape_filter').prop('checked', defaults.shape_filter);
 	    $('#maximum_tree_density').val(defaults.maximum_tree_density);
 	    $('#url').val(defaults.url);
 	    $('#zoom').val(defaults.zoom);
 	    $('#modern_roads').val(defaults.modern_roads);
+
+		$("#shape_filter_parameters").toggle($("#shape_filter").is(":checked"));
 	
 	    if (rect !== false) {
 			rect.remove();

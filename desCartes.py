@@ -84,6 +84,7 @@ def desCartes(map_directory,
               min_size_factor = "10", # Multiplied by int(MAX_ROAD_WIDTH)^2 to give minimum size for a contour to be considered
               inflation_factor = "2.3", # Multiplied by int(MAX_ROAD_WIDTH) to limit average breadth of a contour perpendicular to its skeleton
               gap_close = "20", # For closing gaps between likely roads
+              shape_filter = "True",
               templating = "True",
               template_dir = './data/templates', 
               template_filenames = ['tree-broadleaf.png', 'tree-conifer.png'], 
@@ -107,11 +108,13 @@ def desCartes(map_directory,
         inflation_factor = float(inflation_factor) if isinstance(inflation_factor, str) else inflation_factor
         gap_close = int(gap_close) if isinstance(gap_close, str) else gap_close
         maximum_tree_density = float(maximum_tree_density) if isinstance(maximum_tree_density, str) else maximum_tree_density
+        shape_filter = False if shape_filter == "False" else True
+        templating = False if templating == "False" else True
         visualise = False if visualise == "False" else True
         show_images = False if show_images == "False" else True
         return binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, visualise, show_images
 
-    binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, visualise, show_images = cast_params(binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, visualise, show_images)
+    binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, shape_filter, templating, visualise, show_images = cast_params(binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, shape_filter, templating, visualise, show_images)
     
     # Open the geotiff using rasterio
     with rasterio.open(map_directory + 'geo.tiff') as raster:
@@ -185,54 +188,57 @@ def desCartes(map_directory,
         hull_area = cv2.contourArea(hull)
         if hull_area == 0:
             continue # Reject contour
-        convexity = contour_areas[i] / hull_area
-        if convexity > convexity_min:
-            visualisation_contoursets["convexity"][2].append(contour) # Green for convexity rejection
-            continue # Reject contour      
         
-        # Create shape with holes and outsized areas removed
-        emmentaler = np.zeros_like(binary_image)
-        cv2.drawContours(emmentaler, [contour], -1, 255, -1)        
-        child_contours = [c for index, (c, h) in enumerate(zip(contours, hierarchy[0])) if h[3] == i and contour_validity[index]] # Get valid child contours; any blobs within a likely road are thus eliminated
-        for child in child_contours:
-            cv2.drawContours(emmentaler, [child], -1, 0, -1)
-        emmentaler_area = np.sum(emmentaler == 255)
-        ## Remove outsized areas   
-        inflation_factor = inflation_factor
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (int(MAX_ROAD_WIDTH * inflation_factor), int(MAX_ROAD_WIDTH * inflation_factor)))
-        emmentaler_eroded = cv2.erode(emmentaler, kernel, iterations=1)
-        emmentaler_eroded = np.where(emmentaler_eroded == 0, emmentaler, 0)
+        if shape_filter:
         
-        emmentaler_contours = cv2.findContours(emmentaler_eroded, cv2.RETR_EXTERNAL , cv2.CHAIN_APPROX_NONE)[0]
-        
-        double_roadwidth = (MAX_ROAD_WIDTH + MIN_ROAD_WIDTH)
-        expected_road_perimeter = double_roadwidth + (4 * contour_areas[i] / double_roadwidth)
-        inflation = cv2.arcLength(emmentaler_contours[0], True) * double_roadwidth / expected_road_perimeter
-        if inflation < double_roadwidth / inflation_factor:
-            visualisation_contoursets["under-inflation"][2].append(contour) # Purple for under-inflation rejection
-            continue # Reject contour
-        elif inflation > double_roadwidth * inflation_factor:
-            visualisation_contoursets["over-inflation"][2].append(contour) # Teal for over-inflation rejection
-            continue # Reject contour                
-        
-        if templating: # (Woodland templates rather than road templates)
+            convexity = contour_areas[i] / hull_area
+            if convexity > convexity_min:
+                visualisation_contoursets["convexity"][2].append(contour) # Green for convexity rejection
+                continue # Reject contour      
             
-            ## Try testing woodland density using matchTemplate
-            mask = emmentaler.astype(bool)
-            masked_image = grayscale_image * mask[:, :]
-            x, y, w, h = cv2.boundingRect(contour)
-            masked_image = masked_image[y:y+h, x:x+w]
-            match_count = 0
-            for i, template_filename in enumerate(template_filenames):
-                # print("Matching: "+template_filename)
-                template = cv2.imread(f"{template_dir}/{template_filename}", 0)
-                res = cv2.matchTemplate(masked_image, template, cv2.TM_CCOEFF_NORMED)
-                match_count += np.count_nonzero(res >= thresholds[i])
-                template_area = template.shape[0] * template.shape[1]
-            # print("Tree density: " + str(match_count * template_area / emmentaler_area))
-            if match_count * template_area / emmentaler_area > maximum_tree_density:
-                visualisation_contoursets["woodland"][2].append(contour) # Yellow for tree density rejection
-                continue # Reject contour    
+            # Create shape with holes and outsized areas removed
+            emmentaler = np.zeros_like(binary_image)
+            cv2.drawContours(emmentaler, [contour], -1, 255, -1)        
+            child_contours = [c for index, (c, h) in enumerate(zip(contours, hierarchy[0])) if h[3] == i and contour_validity[index]] # Get valid child contours; any blobs within a likely road are thus eliminated
+            for child in child_contours:
+                cv2.drawContours(emmentaler, [child], -1, 0, -1)
+            emmentaler_area = np.sum(emmentaler == 255)
+            ## Remove outsized areas   
+            inflation_factor = inflation_factor
+            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (int(MAX_ROAD_WIDTH * inflation_factor), int(MAX_ROAD_WIDTH * inflation_factor)))
+            emmentaler_eroded = cv2.erode(emmentaler, kernel, iterations=1)
+            emmentaler_eroded = np.where(emmentaler_eroded == 0, emmentaler, 0)
+            
+            emmentaler_contours = cv2.findContours(emmentaler_eroded, cv2.RETR_EXTERNAL , cv2.CHAIN_APPROX_NONE)[0]
+            
+            double_roadwidth = (MAX_ROAD_WIDTH + MIN_ROAD_WIDTH)
+            expected_road_perimeter = double_roadwidth + (4 * contour_areas[i] / double_roadwidth)
+            inflation = cv2.arcLength(emmentaler_contours[0], True) * double_roadwidth / expected_road_perimeter
+            if inflation < double_roadwidth / inflation_factor:
+                visualisation_contoursets["under-inflation"][2].append(contour) # Purple for under-inflation rejection
+                continue # Reject contour
+            elif inflation > double_roadwidth * inflation_factor:
+                visualisation_contoursets["over-inflation"][2].append(contour) # Teal for over-inflation rejection
+                continue # Reject contour                
+            
+            if templating: # (Woodland templates rather than road templates)
+                
+                ## Try testing woodland density using matchTemplate
+                mask = emmentaler.astype(bool)
+                masked_image = grayscale_image * mask[:, :]
+                x, y, w, h = cv2.boundingRect(contour)
+                masked_image = masked_image[y:y+h, x:x+w]
+                match_count = 0
+                for i, template_filename in enumerate(template_filenames):
+                    # print("Matching: "+template_filename)
+                    template = cv2.imread(f"{template_dir}/{template_filename}", 0)
+                    res = cv2.matchTemplate(masked_image, template, cv2.TM_CCOEFF_NORMED)
+                    match_count += np.count_nonzero(res >= thresholds[i])
+                    template_area = template.shape[0] * template.shape[1]
+                # print("Tree density: " + str(match_count * template_area / emmentaler_area))
+                if match_count * template_area / emmentaler_area > maximum_tree_density:
+                    visualisation_contoursets["woodland"][2].append(contour) # Yellow for tree density rejection
+                    continue # Reject contour    
         
         visualisation_contoursets["likely_road_shape"][2].append(contour)# Red for likely road  
                     
@@ -258,7 +264,7 @@ def desCartes(map_directory,
         overlay = np.zeros((height, width, 4), dtype=np.uint8)
         shape = overlay.copy()
         shape[likely_roads == 255, 1:4] = 255
-        overlay[:] = np.array([0, 0, 255, 255], dtype=np.uint8) # Red
+        # overlay[:] = np.array([0, 0, 255, 255], dtype=np.uint8) # Red
         shaded = cv2.addWeighted(overlay, .5, likely_roads_visualisation, .5, 0) # Set opacity
         likely_roads_visualisation = np.where(shape == 255, shaded, likely_roads_visualisation) # Draw shading
         skeleton_mask = np.zeros_like(grayscale_image, dtype=np.uint8)
