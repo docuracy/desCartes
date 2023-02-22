@@ -100,8 +100,8 @@ def desCartes(map_directory,
                 binary_image = False if binary_image == "False" else True
                 blur_size = int(blur_size)
                 binarization_threshold = int(binarization_threshold)
-                MAX_ROAD_WIDTH = int(MAX_ROAD_WIDTH)
-                MIN_ROAD_WIDTH = int(MIN_ROAD_WIDTH)
+                MAX_ROAD_WIDTH = float(MAX_ROAD_WIDTH)
+                MIN_ROAD_WIDTH = float(MIN_ROAD_WIDTH)
                 convexity_min = float(convexity_min)
                 min_size_factor = int(min_size_factor)
                 inflation_factor = float(inflation_factor)
