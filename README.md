@@ -16,6 +16,10 @@ For any given map [extent](https://en.wikipedia.org/wiki/Map_extent) (bounding c
 >
 >Output from *des*Cartes. A range of images is presented to indicate the steps taken in identifying likely roads, and a button is provided for the download of vector data.
 
+><img src="https://user-images.githubusercontent.com/42514781/221306707-ff0730ed-f357-4330-addf-61fc5394e40b.png" />
+>
+>This image shows the tests run along the contours of a skeletonized image to determine the presence or otherwise of road boundaries or modern roads (shown in yellow). Shape filtering before running these tests would eliminate most of the false contours in white areas.
+
 ><img src="https://user-images.githubusercontent.com/42514781/221305212-d6d0b5dc-1f1b-4845-8b17-cff64f1a59ac.png" />
 >
 >The latest development is the inclusion of network analysis which aims to group candidate roads into a likely network, patching gaps where necessary. Candidate roads which fail a connectivity test are eliminated. Parameters for tuning the analysis are yet to be properly determined, and in the meantime results range from terrible to impressively good!
