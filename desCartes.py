@@ -31,8 +31,9 @@ import math
 import geopandas as gpd
 from extract_modern_roads import transform_linestrings
 import io
-import itertools
-from sklearn.preprocessing import MinMaxScaler
+import networkx as nx
+from sklearn.cluster import KMeans
+# import matplotlib.pyplot as plt # Required only for elbow test
 
 def draw_linestrings_on_image(bgr_image, linestring_gdf, linestring_color, linestring_thickness):
     for _, linestring in linestring_gdf.iterrows():
@@ -92,13 +93,15 @@ def desCartes(map_directory,
               thresholds = [.7, .7],
               maximum_tree_density = ".1",
               visualise = "True",
-              show_images = "False"
+              show_images = "False",
+              connectivity_max = "40", # Distance from the endpoints of other candidate roads below which a candidate road will be rejected
+              connectivity_score_min = ".2" # Connectivity considered only between candidate roads with at least this score
               ):
     
     # Necessary to handle parameters passed as strings in URL
     def cast_params(binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, 
         convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, 
-        shape_filter, templating, visualise, show_images):
+        shape_filter, templating, visualise, show_images, connectivity_max, connectivity_score_min):
         binary_image = False if binary_image == "False" else True
         blur_size = int(blur_size) if isinstance(blur_size, str) else blur_size
         binarization_threshold = int(binarization_threshold) if isinstance(binarization_threshold, str) else binarization_threshold
@@ -113,9 +116,11 @@ def desCartes(map_directory,
         templating = False if templating == "False" else True
         visualise = False if visualise == "False" else True
         show_images = False if show_images == "False" else True
-        return binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, shape_filter, templating, visualise, show_images
+        connectivity_max = float(connectivity_max) if isinstance(connectivity_max, str) else connectivity_max
+        connectivity_score_min = float(connectivity_score_min) if isinstance(connectivity_score_min, str) else connectivity_score_min
+        return binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, shape_filter, templating, visualise, show_images, connectivity_max, connectivity_score_min
 
-    binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, shape_filter, templating, visualise, show_images = cast_params(binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, shape_filter, templating, visualise, show_images)
+    binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, shape_filter, templating, visualise, show_images, connectivity_max, connectivity_score_min = cast_params(binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, shape_filter, templating, visualise, show_images, connectivity_max, connectivity_score_min)
     
     # Open the geotiff using rasterio
     with rasterio.open(map_directory + 'geo.tiff') as raster:
@@ -336,14 +341,20 @@ def desCartes(map_directory,
     lineStrings = []
     for split_contour in split_contours:
         lineStrings.append(geometry.LineString(np.array(split_contour).reshape(-1, 2)).simplify(2))
+
+#####################
+## VECTOR ANALYSIS ##
+#####################
     
-    ## Measure the proximity of modern roads and likely road edges at sample points along each lineString
+   ## Measure the proximity of modern roads and likely road edges at sample points along each lineString
     print("Measuring proximities ...")
+    modern_road_labels = []
     proximity_visualisation = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
     proximity_visualisation = draw_linestrings_on_image(proximity_visualisation, modern_roads, linestring_color = (0, 255, 255), linestring_thickness = 3)
     proximity = []
     for lineString in lineStrings:
         proximity.append([])
+        modern_road_labels.append([])
         testLength = lineString.length - MAX_ROAD_WIDTH # Do not test in proximity to junctions
         if testLength <= 0:
             proximity[-1].append(["Too short: "+str(lineString.length)])
@@ -359,6 +370,7 @@ def desCartes(map_directory,
             cv2.circle(proximity_visualisation, (int(test_point.x), int(test_point.y)), 4, (0, 0, 255), -1)
             tangent_angle = np.arctan2(test_point.y - previouspoint.y, test_point.x - previouspoint.x)
             proximity[-1][-1].extend(get_nearest_parallel_linestring(modern_roads, modern_roads_sindex, test_point, 3 * MAX_ROAD_WIDTH, tangent_angle, max_angle = 15 * np.pi / 180))
+            modern_road_labels[-1].append(proximity[-1][-1][-1])
             normal_angle = np.pi/2 + tangent_angle
             normal_vector = np.array([-np.cos(normal_angle), np.sin(normal_angle)])
     
@@ -374,45 +386,53 @@ def desCartes(map_directory,
                         break
             previouspoint = test_point
             
+    # Concatenate unique non-False modern road ids
+    modern_road_labels = ['; '.join(set(str(item) for item in row if item)) for row in modern_road_labels]
+
+        
     if visualise:
         base64_images.append({"label": "Road boundary checks (with modern OS roads)", "image": base64.b64encode(cv2.imencode('.jpg', proximity_visualisation)[1]).decode("utf-8")})
     
-    # Split at modern road boundaries and label any matched candidate roads
-    print("Splitting at modern road boundaries ...")
-    split_lineStrings = []
-    split_proximity = []
-    modern_road_labels = []
-    for lineString, prox in zip(lineStrings, proximity):
-        residue_lineString = lineString
-        residue_prox = prox
-                
-        i = 1
-        while i < len(residue_prox):
-            if residue_prox[i][2] != residue_prox[i-1][2]:
-                # Split the linestring at the midpoint between consecutive test points where a change in the modern road id is detected
-                mid_point_distance = (residue_prox[i][0] + residue_prox[i-1][0]) / 2
-                split_point = residue_lineString.interpolate(mid_point_distance)
-                points_before_split_point = [point for point in residue_lineString.coords if residue_lineString.project(Point(point)) < mid_point_distance]
-                used_points = len(points_before_split_point)
-                split_lineStrings.append(LineString([*points_before_split_point, split_point]))
-                residue_lineString = LineString([split_point, *residue_lineString.coords[used_points:]])
-                split_proximity.append(residue_prox[:i])
-                modern_road_labels.append('' if residue_prox[i][2] == False else residue_prox[i][2])
-                residue_prox = residue_prox[i:]
-                for residue_p in residue_prox:
-                    residue_p[0] -= mid_point_distance
-                if len(residue_prox) > 1:
-                    i = 0
-            i += 1
-                
-        split_lineStrings.append(residue_lineString)
-        split_proximity.append(residue_prox)
-        modern_road_labels.append('' if (not isinstance(residue_prox[0][0], bool) or residue_prox[0][2] == False) else residue_prox[0][2])
-        
-    lineStrings = split_lineStrings
-    proximity = split_proximity
+    # # Split at modern road boundaries and label any matched candidate roads - NOT ASSIGNING MODERN ROAD LABELS PROPERLY TO SPLIT SECTIONS
+    # print("Splitting " + str(len(lineStrings)) + " candidate roads at modern road boundaries ...")
+    # split_lineStrings = []
+    # split_proximity = []
+    # modern_road_labels = []
+    # for lineString, prox in zip(lineStrings, proximity):
+    #     residue_lineString = lineString
+    #     residue_prox = prox
+    #
+    #     i = 1
+    #     while i < len(residue_prox):
+    #         if residue_prox[i][2] != residue_prox[i-1][2]:
+    #             # Split the linestring at the midpoint between consecutive test points where a change in the modern road id is detected
+    #             mid_point_distance = (residue_prox[i][0] + residue_prox[i-1][0]) / 2
+    #             split_point = residue_lineString.interpolate(mid_point_distance)
+    #             points_before_split_point = [point for point in residue_lineString.coords if residue_lineString.project(Point(point)) < mid_point_distance]
+    #             used_points = len(points_before_split_point)
+    #             split_lineStrings.append(LineString([*points_before_split_point, split_point]))
+    #             residue_lineString = LineString([split_point, *residue_lineString.coords[used_points:]])
+    #             split_proximity.append(residue_prox[:i])
+    #             modern_road_labels.append('' if residue_prox[i-1][2] == False else residue_prox[i-1][2])
+    #             residue_prox = residue_prox[i:]
+    #             for residue_p in residue_prox:
+    #                 residue_p[0] -= mid_point_distance
+    #             if len(residue_prox) > 1:
+    #                 i = 0
+    #         i += 1
+    #
+    #     split_lineStrings.append(residue_lineString)
+    #     split_proximity.append(residue_prox)
+    #     modern_road_labels.append('' if (not isinstance(residue_prox[0][0], bool) or residue_prox[0][2] == False) else residue_prox[0][2])
+    #
+    # lineStrings = split_lineStrings
+    # proximity = split_proximity
+
+#############
+## SCORING ##
+#############
     
-    print("Scoring ...")
+    print("Scoring " + str(len(lineStrings)) + " candidate roads ...")
     scores = []
     for lineString, prox in zip(lineStrings, proximity):
         if len(prox) == 0:
@@ -431,98 +451,159 @@ def desCartes(map_directory,
         scores.append(count * non_circularity / len(prox))     
            
     # Combine arrays in a GeoDataFrame
-    candidate_roads = gpd.GeoDataFrame({'geometry': lineStrings, 'score': scores, 'proximity': proximity})
+    candidate_roads = gpd.GeoDataFrame({'geometry': lineStrings, 'modern_road_id': modern_road_labels, 'score': scores})
 
-    # print("Assessing connectivity ...")
-    #
-    # candidate_roads_filtered = candidate_roads[candidate_roads['score'] > 0.4]
-    # candidate_roads_filtered['orig_idx'] = candidate_roads_filtered.index
-    # sindex = candidate_roads_filtered.sindex
-    #
-    # connectivity = []
-    # for idx, row in candidate_roads_filtered.iterrows():
-    #     connectivity.append(np.inf)
-    #     line = row['geometry']
-    #     # Create 20px buffer around each endpoint of the line
-    #     for point in [Point(line.coords[0]), Point(line.coords[-1])]:
-    #         closest = list(sindex.nearest(box(point.x - 20, point.y - 20, point.x + 20, point.y + 20)))
-    #         # Update proximity value for the original line based on distance to closest lines
-    #         connectivity[-1] = min(connectivity[-1], min([line.distance(candidate_roads_filtered.loc[candidate_idx, 'geometry']) for candidate_idx in closest if candidate_idx != idx]))
-    #
-    # # Calculate inverse connectivity values
-    # connectivity_inv = 1 / np.array(connectivity)
-    # scaler = MinMaxScaler(feature_range=(0.2, 1))
-    # candidate_roads_filtered['connectivity'] = scaler.fit_transform(connectivity_inv.reshape(-1, 1)).flatten()
-    #
-    # for idx, row in candidate_roads_filtered.iterrows():
-    #     candidate_roads.loc[row['orig_idx'], 'score'] = candidate_roads.loc[row['orig_idx'], 'score'] * row['connectivity']
-
-
-    # candidate_roads['score'][candidate_roads_filtered.index.get_level_values(0)] = connectivity
-
-    if shape_filter == True: # Process too time-consuming if shapes have not been filtered
+    # Now assess connectivity of each candidate road by finding the minimum distance of either of its endpoints to the endpoint of 
+    # any other candidate road which has a score greater than connectivity_score_min.
+    # This method should probably be combined with - or replaced by - some other method which assesses the product of scores and 
+    # lengths of interconnected lines.
+    print("Assessing connectivity ...")
     
-        ## Fill gaps in candidate road network
-        print("Filling gaps ...")
-        used_endpoints = set()
-        disjointed = set()
-        filler_segments = []
-        
-        # Find disjointed points and add them to disjointed set
-        for line in lineStrings:
-            start_point, end_point = Point(line.coords[0]), Point(line.coords[-1])
-            if start_point not in used_endpoints:
-                used_endpoints.add(start_point)
-                shared = any(start_point in [other.coords[0], other.coords[-1]] for other in lineStrings if line != other)
-                if not shared:
-                    disjointed.add(start_point)
-            if end_point not in used_endpoints:
-                used_endpoints.add(end_point)
-                shared = any(end_point in [other.coords[0], other.coords[-1]] for other in lineStrings if line != other)
-                if not shared:
-                    disjointed.add(end_point)
-        
-        # Create filler segments
-        for p1, p2 in itertools.combinations(used_endpoints, 2):
-            if p1.distance(p2) <= gap_close and (p1 in disjointed or p2 in disjointed):
-                filler_segments.append(LineString([p1, p2]))
-        
-        print("... " + str(len(filler_segments)) + " fillers created, now filtering ...")
+    '''
+    The following section aims to identify clusters of interconnected linestrings from a set of linestrings 
+    represented as a GeoDataFrame. The clustering is based on the gravity score of each group of linestrings, 
+    which is calculated by summing the length of each linestring in the group multiplied by its quality score, 
+    and weighting the result by the proportion of the total length squared represented by the group. The 
+    optimal number of clusters is determined using the elbow method. The code then creates a new GeoDataFrame 
+    of unconnected linestring endpoints, and creates filler connections between groups of linestrings with 
+    high enough gravity scores based on the distance between all unconnected endpoints in the two groups. A 
+    graph is used to check that the gap is not met by the existing network. Otherwise, if a gap between two 
+    endpoints meets the gravity_threshold and gap_close tests, the code creates a new filler road between 
+    the two endpoints.
+    '''
     
-        # Check for intersections between filler segments
-        segments_to_remove = set()
-        for (i, segment1), (j, segment2) in itertools.combinations(enumerate(filler_segments), 2):
-            if segment1.intersects(segment2):
-                if segment1.length > segment2.length:
-                    segments_to_remove.add(i)
-                else:
-                    segments_to_remove.add(j)
-        
-        # Remove the longer filler segments that intersect
-        for i in reversed(sorted(segments_to_remove)):
-            if filler_segments[i].length > 2:
-                filler_segments.pop(i)
+    # Create a graph of interconnected linestrings
+    G = nx.Graph()
+    gdf_sindex = candidate_roads.sindex
+    for i, row_i in candidate_roads.iterrows():
+        possible_matches_index = list(gdf_sindex.intersection(row_i['geometry'].bounds))
+        possible_matches = candidate_roads.iloc[possible_matches_index]
+        for j, row_j in possible_matches.iterrows():
+            if i == j:
+                continue
+            if row_i['geometry'].touches(row_j['geometry']):
+                G.add_edge(i, j)
     
-        # Create the new GeoDataFrame with the filler segments added
-        candidate_roads = gpd.GeoDataFrame({
-            'geometry': candidate_roads.geometry.tolist() + filler_segments,
-            'score': candidate_roads.score.tolist() + [-1]*len(filler_segments),
-            'proximity': candidate_roads.proximity.tolist() + [False]*len(filler_segments)
-        })
-
+    # Identify the groups of interconnected linestrings
+    print("Grouping candidate roads ...")
+    groups = list(nx.connected_components(G))
+    
+    # Set the maximum total length squared
+    max_total_length_squared = sum([candidate_roads.geometry.length.max()**2 for _ in range(len(groups))])
+    
+    # Calculate the gravity score for each group
+    print("Calculating gravity scores ...")
+    group_gravity_scores = []
+    for group in groups:
+        length_score_sum = 0.0
+        total_length_squared = 0.0
+        for i in group:
+            length = candidate_roads.iloc[i]['geometry'].length
+            score = candidate_roads.iloc[i]['score']
+            length_score_sum += length * score
+            total_length_squared += length ** 2
+        length_factor = min(total_length_squared / max_total_length_squared, 1.0)
+        group_gravity_scores.append([length_score_sum * length_factor])
+    
+    # # Determine the optimal number of clusters using the elbow method
+    # print("Elbowing ...")    
+    # elbow_scores = []
+    # for k in range(1, 11):
+    #     kmeans = KMeans(n_clusters=k)
+    #     kmeans.fit(group_gravity_scores)
+    #     elbow_scores.append(kmeans.inertia_)
+    # plt.plot(range(1, 11), elbow_scores)
+    # plt.xlabel('Number of clusters')
+    # plt.ylabel('Elbow score')
+    # plt.show()
+    
+    # Based on the plot, choose the number of clusters and fit the model
+    print("Clustering ...")
+    n_clusters = 2  # determined by elbowing
+    kmeans = KMeans(n_clusters=n_clusters)
+    kmeans.fit(group_gravity_scores)
+    
+    # Get the cluster labels and centroids
+    centroids = kmeans.cluster_centers_
+    
+    # Assign the appropriate gravity threshold based on the cluster centroids
+    gravity_threshold = max(centroids)
+    
+    # Find unconnected endpoints in groups with gravity_score >= gravity_threshold
+    print("Gathering unconnected endpoints with sufficient gravity for filler segments ...")
+    G = nx.Graph()
+    endpoints = set()
+    connected_endpoints = set()
+    road_network_segments = []
+    
+    for group, gravity_score in zip(groups, group_gravity_scores):
+        if gravity_score >= gravity_threshold:
+            group_lines = candidate_roads.iloc[list(group)]
+            for _, row in group_lines.iterrows():
+                line = row['geometry']
+                modern_road_id = row['modern_road_id']
+                start_node_coords = tuple(line.coords[0])
+                end_node_coords = tuple(line.coords[-1])
+                G.add_node(start_node_coords)
+                G.add_node(end_node_coords)
+                G.add_edge(start_node_coords, end_node_coords, length=line.length, linestring=line)
+                for endpoint in [line.coords[0], line.coords[-1]]:
+                    if endpoint not in endpoints:
+                        endpoints.add(endpoint)
+                    else:
+                        connected_endpoints.add(endpoint)
+                road_network_segments.append({
+                    'geometry': line,
+                    'modern_road_id': modern_road_id
+                })
+            
+    unconnected_endpoints = endpoints - connected_endpoints
+    endpoint_gdf = gpd.GeoDataFrame.from_records([{'geometry': Point(endpoint)} for endpoint in unconnected_endpoints])
+    print('... found ' + str(len(unconnected_endpoints)) + ' such endpoints ...')
+    
+    # Create filler connections (up to gap_close in length) between and within groups with high enough gravity scores
+    endpoint_sindex = endpoint_gdf.sindex
+    filler_count = 0
+    
+    for i, endpoint1 in endpoint_gdf.iterrows():
+        possible_matches_index = list(endpoint_sindex.intersection(endpoint1.geometry.buffer(gap_close).bounds))
+        possible_matches = endpoint_gdf.iloc[possible_matches_index]
+        for j, endpoint2 in possible_matches.iterrows():
+            if i == j:
+                continue # Cannot fill between identical points
+            if nx.shortest_path_length(G, tuple(endpoint1.geometry.coords[0]), tuple(endpoint2.geometry.coords[0]), weight='length') < 3 * gap_close:
+                continue # Do not create filler if a short path already exists
+            road_network_segments.append({
+                'geometry': LineString([endpoint1.geometry, endpoint2.geometry]),
+                'modern_road_id': '-filler segment-'
+            })
+            filler_count += 1
+    
+    road_network_gdf = gpd.GeoDataFrame.from_records(road_network_segments)
+    
+    print("... " + str(filler_count) + " fillers created ...")
+    
     # Reproject LineStrings to original raster CRS
     print("Reprojecting ...")
-    candidate_roads_EPSG4326 = [transform(lambda x, y: rasterio.transform.xy(raster.transform, y, x), row.geometry) for _, row in candidate_roads.iterrows()]
-    candidate_roads_EPSG4326_gdf = gpd.GeoDataFrame(geometry=[MultiLineString(candidate_roads_EPSG4326)])
-    candidate_roads_EPSG4326_gdf = candidate_roads_EPSG4326_gdf.explode(index_parts=False)
-    candidate_roads_EPSG4326_gdf['modern_road_id'] = candidate_roads.index
-    candidate_roads_EPSG4326_gdf['scores'] = candidate_roads['score']
-    candidate_roads_EPSG4326_gdf['proximity'] = candidate_roads['proximity'].astype(str)
+    
+    def XY_to_EPSG4326(raster_gdf):
+        transformed_coordinates = [transform(lambda x, y: rasterio.transform.xy(raster.transform, y, x), row.geometry) for _, row in raster_gdf.iterrows()]
+        EPSG4326_gdf = gpd.GeoDataFrame(geometry=[MultiLineString([line]) for line in transformed_coordinates])
+        return EPSG4326_gdf
+    
+    candidate_roads_EPSG4326_gdf = XY_to_EPSG4326(candidate_roads)
+    candidate_roads_EPSG4326_gdf['modern_road_id'] = candidate_roads['modern_road_id'].values
+    candidate_roads_EPSG4326_gdf['score'] = candidate_roads['score'].values
+    candidate_roads_EPSG4326_gdf.to_file(map_directory + 'candidate_roads.gpkg', layer="candidate_roads", driver="GPKG")
+    
+    road_network_EPSG4326_gdf = XY_to_EPSG4326(road_network_gdf)
+    road_network_EPSG4326_gdf['modern_road_id'] = road_network_gdf['modern_road_id'].values
+    road_network_EPSG4326_gdf.to_file(map_directory + 'road_network.gpkg', layer="road_network", driver="GPKG")
     
     # Create a GeoPackage
-    print('Creating GeoPackage ...')
+    print('Creating Downloadable GeoPackage ...')
     buffer = io.BytesIO()
-    candidate_roads_EPSG4326_gdf.to_file(buffer, driver="GPKG", layer="candidate_roads", vfs="mem", encoding="utf-8")
+    road_network_EPSG4326_gdf.to_file(buffer, driver="GPKG", layer="candidate_roads", vfs="mem", encoding="utf-8")
     vector_json = {"gpkg": base64.b64encode(buffer.getvalue()).decode('utf-8')}
      
 ###################
@@ -551,12 +632,12 @@ def desCartes(map_directory,
                     candidate_road_dict[score] = []
                 candidate_road_dict[score].append(candidate_road)
         
-        for score, candidate_roads in candidate_road_dict.items():
+        for score, candidate_roads_group in candidate_road_dict.items():
             overlay = visualisation.copy()
             colour = (255, 0, 0) if score == -1 else (0, 255, 255) # Blue for filler roads
             score = .5 if score == -1 else score # Filler roads
             opacity = np.sin(score * np.pi / 2) # shape the score profile
-            for candidate_road in candidate_roads:
+            for candidate_road in candidate_roads_group:
                 coords = np.array(candidate_road.coords, np.int32)
                 coords = coords.reshape(-1, 1, 2)
                 cv2.polylines(overlay, [coords], isClosed=False, color=colour, thickness=2)
@@ -564,6 +645,10 @@ def desCartes(map_directory,
     
         base64_images.append({"label": "Segmented map image", "image": base64.b64encode(cv2.imencode('.jpg', visualisation)[1]).decode("utf-8")}) 
         
+        road_network_visualisation = cv2.cvtColor(grayscale_image, cv2.COLOR_GRAY2BGR)
+        road_network_visualisation = draw_linestrings_on_image(road_network_visualisation, road_network_gdf, (0, 0, 255, 255), 2)
+        base64_images.append({"label": "Predicted Road Network", "image": base64.b64encode(cv2.imencode('.jpg', road_network_visualisation)[1]).decode("utf-8")})
+                
         if show_images:
             print('Showing images ...')
             cv2.imshow("Binary Image", binary_image)
@@ -571,6 +656,7 @@ def desCartes(map_directory,
             cv2.imshow('likely_roads_visualisation', likely_roads_visualisation) 
             cv2.imshow('proximity_visualisation', proximity_visualisation) 
             cv2.imshow('candidate_roads', visualisation) 
+            cv2.imshow('road_network', road_network_visualisation) 
             cv2.waitKey(0)
     
     print('... completed.')

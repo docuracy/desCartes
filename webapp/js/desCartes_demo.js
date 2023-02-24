@@ -128,7 +128,8 @@ $(document).ready(function() {
                     spinner("Sorry, something went wrong. The server failed to respond within the allowed time.");
                 } else {
                     var response = jqXHR.responseJSON;
-                    spinner("Sorry, something went wrong." + "Error " + response.error.code + ": " + response.error.message);
+					report = typeof response === 'undefined' ? "" : " Error " + response.error.code + ": " + response.error.message;
+                    spinner("Sorry, something went wrong." + report);
                 }
             }
         });

@@ -4,3 +4,7 @@ data/OS_Open_Roads_LineStrings_WGS84.gpkg
 data/OS_Open_Roads_no-motorways_EPSG4326.gpkg
 data/OS_Open_Roads_LineStrings_ids_EPSG4326.gpkg
 data/OS_Open_Roads_no-motorways_EPSG4326_singleparts.gpkg
+output/tormarton/candidate_roads_unprojected.gpkg
+output/tormarton/candidate_roads_split.gpkg
+output/tormarton/candidate_roads.gpkg
+output/tormarton/road_network.gpkg
