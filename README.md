@@ -8,7 +8,7 @@
 
 For any given map [extent](https://en.wikipedia.org/wiki/Map_extent) (bounding coordinates), *des*Cartes first generates a georeferenced map image ([geotiff](https://en.wikipedia.org/wiki/GeoTIFF)), and then - using a range of adjustable input parameters - processes the image to extract candidate road lines.
 
-><img src="https://user-images.githubusercontent.com/42514781/219344526-67aeb374-7e20-4cc7-82bd-8a7383283675.png" />
+><img src="https://user-images.githubusercontent.com/42514781/221323460-0a761a91-5e10-4ffd-8441-06a80084fc37.png" />
 >
 >Demonstration of *des*Cartes. The user can select a map area (for the sake of server resources currently limited to a maximum of 10 square kilometers) and adjust the parameters used to detect likely roads.
 
