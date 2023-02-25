@@ -151,7 +151,25 @@ def desCartes(map_directory,
     base64_images = []
     if visualise:
         base64_images.append({"label": "Thresholded map image", "image": base64.b64encode(cv2.imencode('.jpg', binary_image)[1]).decode("utf-8")})      
-     
+    
+    '''
+    TO DO: Before thinning the image, optionally detect dashed line contours using std_deviation_multiplier, area_range, 
+    convexity_range, and aspect_ratio_range defined in map_defaults.json. Use morphological operations to 
+    generate line contours which might represent footpaths (return these as a separate gpkg). The delete the dash 
+    contours from the binary_image: it is more effective at this stage than merely filtering by size after 
+    thinning the image, and useful for reducing the braiding otherwise evident on the skeletonized candidate roads image.
+    
+    The morphological operations for extracting potential footpaths would be:
+    
+    1. Draw dash contours in white on black
+    2. Dilate to merge dashes and parallel lines
+    3. Skeletonize and then get contours
+    4. Reduce contours to single linestrings (as later in this code).
+    5. Get single-dash lines (potentially footpaths running along solid boundaries) by eroding the dilated image until they disappear, then subtract from the dilated image
+    6. Skeletonize and contour as before. Such contours would align with the dashes rather than the centre of such a footpath.
+    
+    '''
+         
     # Thin all black lines to 1px
     binary_image = np.invert(binary_image)  
     binary_image = skeletonize(binary_image / 255).astype(np.uint8) * 255
@@ -346,7 +364,7 @@ def desCartes(map_directory,
 ## VECTOR ANALYSIS ##
 #####################
     
-   ## Measure the proximity of modern roads and likely road edges at sample points along each lineString
+    ## Measure the proximity of modern roads and likely road edges at sample points along each lineString
     print("Measuring proximities ...")
     modern_road_labels = []
     proximity_visualisation = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
@@ -388,6 +406,11 @@ def desCartes(map_directory,
             
     # Concatenate unique non-False modern road ids
     modern_road_labels = ['; '.join(set(str(item) for item in row if item)) for row in modern_road_labels]
+    
+    '''
+    TO DO: Divide and delete continuous sections of lineStrings that have failed to meet the road boundary test
+    
+    '''
 
         
     if visualise:

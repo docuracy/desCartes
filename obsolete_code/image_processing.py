@@ -3,9 +3,12 @@
 
 '''
 import cv2
+import math
 import numpy as np
 from skimage.morphology import skeletonize
 import os
+import geopandas as gpd
+from shapely.geometry import Point, LineString
 
 # Attempt to bridge gaps in skeleton by dilation and re-skeletonization
 def skeleton_contours(skeleton_binary, raster_image_gray, gap = 15, step = 1, SHOW_IMAGES = False, OUTPUTDIR = False): # Larger steps run risk of blurring
@@ -92,6 +95,7 @@ def erase_areas(image,
                 circles = False, 
                 blobs = False, 
                 contours = True, 
+                dashes = False,
                 subtract = False,
                 aspect_ratio_max = .15,
                 contour_area_min = False,
@@ -190,6 +194,77 @@ def erase_areas(image,
                         cv2.drawContours(erasure, [contour], -1, (0, 127, 255, 128), shading) # Orange
                 if templated <= template_density_threshold:
                     cv2.drawContours(erasure, [contour], -1, (0, 0, 255, 128), shading)
+    elif dashes:
+        contours, _ = cv2.findContours(image, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+        for contour in contours: 
+            # Define acceptable range of values for each metric
+            std_deviation_multiplier = 3
+            area_range = (25.34 - std_deviation_multiplier * 4.98, 25.34 + std_deviation_multiplier * 4.98)
+            convexity_range = (0.9572 - std_deviation_multiplier * 0.0306, 0.9572 + std_deviation_multiplier * 0.0306)
+            aspect_ratio_range = (0.5085 - std_deviation_multiplier * 0.1082, 0.5085 + std_deviation_multiplier * 0.1082)
+            
+            # Calculate areas of contour and its convex hull
+            contour_area = cv2.contourArea(contour)
+            
+            if not area_range[0] <= contour_area <= area_range[1]:
+                continue
+            
+            hull = cv2.convexHull(contour)
+            hull_area = cv2.contourArea(hull)
+            convexity = contour_area / hull_area
+            
+            if not convexity_range[0] <= convexity <= convexity_range[1]:
+                continue
+
+            # Calculate aspect ratio
+            rect = cv2.minAreaRect(contour)
+            width, height = rect[1]
+            if width == 0 or height == 0:
+                continue # Reject contour
+            else:
+                aspect_ratio = min(width, height) / max(width, height)
+                
+            if not aspect_ratio_range[0] <= aspect_ratio <= aspect_ratio_range[1]:
+                continue
+            
+            cv2.drawContours(erasure, [contour], -1, (0, 255, 0, 128), shading)
+            
+            ## TO DO: Draw dash contours in white on black, dilate to merge dashes and parallel lines,
+            ## skeletonize and then get contours, and reduce those to single linestrings (as in desCartes.py).
+            ## Get single-dash lines by eroding the dilated image until they disappear, then subtract from the dilated image;
+            ## skeletonize and contour as before.
+            ##
+            ## The rest of this section is redundant except possibly for visualisation purposes.
+            
+            # angle = rect[2] # Rather imprecise
+            
+            # Calculate ellipse from contour
+            ellipse = cv2.fitEllipse(contour)
+            
+            # Get ellipse parameters
+            center, axes, angle = ellipse
+            cx, cy = center[0], center[1]
+            
+            line_angle = (90 if axes[1] > axes[0] else 0) - angle
+            line_angle = abs(line_angle % 360) % 180 # Normalise to range 0-180 degrees
+            # Draw line
+            line_length = int(max(width, height) * 3.5)
+            line_start = (int(cx - line_length/2 * np.cos(np.deg2rad(line_angle))), int(cy + line_length/2 * np.sin(np.deg2rad(line_angle))))
+            line_end = (int(cx + line_length/2 * np.cos(np.deg2rad(line_angle))), int(cy - line_length/2 * np.sin(np.deg2rad(line_angle))))
+            cv2.line(erasure, line_start, line_end, (0, 0, 255, 128), thickness=1)
+            
+            
+        '''
+        print('area',mean_area,std_area)
+        print('convexity',mean_convexity,std_convexity)
+        print('aspect_ratio',mean_aspect_ratio,std_aspect_ratio)
+            
+        # area 25.346801346801346 4.982724181977989
+        # convexity 0.957281371092532 0.03064098034608555
+        # aspect_ratio 0.5085408549728891 0.1082271280592799
+        '''
+
+            
     else:
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (size, size))
         mask = image

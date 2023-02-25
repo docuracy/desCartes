@@ -20,7 +20,7 @@ from tiles_to_tiff import create_geotiff
 from extract_modern_roads import extract_modern_roads, transform_linestrings
 # from patch_linestrings import merge_groups
 from pickle import TRUE
-# from image_processing import skeleton_contours, erase_matches, erase_areas
+from obsolete_code.image_processing import skeleton_contours, erase_matches, erase_areas
 import base64
 # from find_areas import find_areas
 from desCartes import desCartes
@@ -32,21 +32,21 @@ from desCartes import desCartes
 # A simple way to get the extent coordinates is to open a Google map in a browser,
 # then right-click on the south-west corner of the area of interest. Then click on 
 # the displayed coordinates and then paste them below. Repeat for the north-east corner.
-EXTENT_SOUTHWEST_LAT, EXTENT_SOUTHWEST_LNG = 51.50269790151397, -2.3436694025372837,
-EXTENT_NORTHEAST_LAT, EXTENT_NORTHEAST_LNG = 51.51241968342722, -2.327874350910519
+EXTENT_SOUTHWEST_LAT, EXTENT_SOUTHWEST_LNG = 51.46833857638139, -2.34334945678711,
+EXTENT_NORTHEAST_LAT, EXTENT_NORTHEAST_LNG = 51.47372515642006, -2.329788208007813
 
 ## The location name will be used to name the directory where files are stored.
 ## If a geotiff already exist in this directory, it will be re-used, and the coordinates given above ignored.
 # LOCATION_NAME = 'longborough'
 # LOCATION_NAME = 'longborough-south'
-LOCATION_NAME = 'tormarton'
+LOCATION_NAME = 'marshfield'
 # LOCATION_NAME = 'tolleshunt'
 # LOCATION_NAME = 'hampton'
 
 ## Uncomment one of these methods, or create your own in the IMAGE PROCESSING CALLS section.
 ## Any name you type here will be used in creating a filename, so avoid funky characters.
-METHOD = 'road_contours'
-# METHOD = 'progressive'
+# METHOD = 'road_contours'
+METHOD = 'progressive'
 # METHOD = 'development'
 
 RASTER_TILE_KEY = 'ySlCyGP2kmmfm9Dgtiqj' # TO USE THE URL GIVEN BELOW, GET YOUR OWN KEY FROM https://cloud.maptiler.com/account/keys/
@@ -314,23 +314,26 @@ match METHOD:
     #         OUTPUTDIR = OUTPUTDIR
     #         )
     #
-    # case 'progressive':
-    #     # Testing a range of parameters that might be useful for machine learning.
-    #     result_binary, _ = erase_matches(raster_image_gray, result_binary, './data/templates', 'tree-broadleaf.png', SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR)
-    #     result_binary, _ = erase_matches(raster_image_gray, result_binary, './data/templates', 'tree-conifer.png', threshold=0.65, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR)
-    #     result_binary, _ = erase_areas(result_binary, raster_image_gray, MAX_ROAD_WIDTH ** 2, blobs = True, black = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Attempts to remove circular markers from roadways on GB OS maps
-    #     result_binary, _ = erase_areas(result_binary, raster_image_gray, 2, contours = False, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase white noise
-    #     result_binary, _ = erase_areas(result_binary, raster_image_gray, 500, closed = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase white shapes
-    #     # result_binary, _ = erase_areas(result_binary, raster_image_gray, 2, contours = False, black = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase black dots
-    #     # result_binary, _ = erase_areas(result_binary, raster_image_gray, 50, closed = True, black = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase black shapes
-    #     # result_binary, _ = erase_areas(result_binary, raster_image_gray, 120, closed = True, black = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase black shapes
-    #     # result_binary, _ = erase_areas(result_binary, raster_image_gray, 200, black = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase black shapes
-    #     result_binary, _ = erase_areas(result_binary, raster_image_gray, 2 * MAX_ROAD_WIDTH, contours = False, subtract = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase large white areas
-    #     # result_binary, _ = erase_areas(result_binary, raster_image_gray, 500, closed = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase white shapes
-    #     # result_binary, _ = erase_areas(result_binary, raster_image_gray, 1.5 * MAX_ROAD_WIDTH, contours = False, subtract = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase large white areas
-    #     result_binary, _ = erase_areas(result_binary, raster_image_gray, 2/3 * MIN_ROAD_WIDTH, contours = False, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase narrow white areas
-    #     result_binary, _ = erase_areas(result_binary, raster_image_gray, 2000, closed = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase white shapes
-    #     result_binary, _ = erase_areas(result_binary, raster_image_gray, 3, contours = False, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase white noise
+    case 'progressive':
+        result_binary, _ = erase_areas(result_binary, raster_image_gray, MAX_ROAD_WIDTH ** 2, contours = False, dashes = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Attempts to extend dashed lines
+        
+        
+        # Testing a range of parameters that might be useful for machine learning.
+        # result_binary, _ = erase_matches(raster_image_gray, result_binary, './data/templates', 'tree-broadleaf.png', SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR)
+        # result_binary, _ = erase_matches(raster_image_gray, result_binary, './data/templates', 'tree-conifer.png', threshold=0.65, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR)
+        # result_binary, _ = erase_areas(result_binary, raster_image_gray, MAX_ROAD_WIDTH ** 2, blobs = True, black = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Attempts to remove circular markers from roadways on GB OS maps
+        # result_binary, _ = erase_areas(result_binary, raster_image_gray, 2, contours = False, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase white noise
+        # result_binary, _ = erase_areas(result_binary, raster_image_gray, 500, closed = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase white shapes
+        # # result_binary, _ = erase_areas(result_binary, raster_image_gray, 2, contours = False, black = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase black dots
+        # # result_binary, _ = erase_areas(result_binary, raster_image_gray, 50, closed = True, black = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase black shapes
+        # # result_binary, _ = erase_areas(result_binary, raster_image_gray, 120, closed = True, black = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase black shapes
+        # # result_binary, _ = erase_areas(result_binary, raster_image_gray, 200, black = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase black shapes
+        # result_binary, _ = erase_areas(result_binary, raster_image_gray, 2 * MAX_ROAD_WIDTH, contours = False, subtract = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase large white areas
+        # # result_binary, _ = erase_areas(result_binary, raster_image_gray, 500, closed = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase white shapes
+        # # result_binary, _ = erase_areas(result_binary, raster_image_gray, 1.5 * MAX_ROAD_WIDTH, contours = False, subtract = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase large white areas
+        # result_binary, _ = erase_areas(result_binary, raster_image_gray, 2/3 * MIN_ROAD_WIDTH, contours = False, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase narrow white areas
+        # result_binary, _ = erase_areas(result_binary, raster_image_gray, 2000, closed = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase white shapes
+        # result_binary, _ = erase_areas(result_binary, raster_image_gray, 3, contours = False, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase white noise
         
     case _: # Default 
         contours, skeleton, base64_images, vector_json, message = desCartes(OUTPUTDIR, template_dir = './../data/templates', show_images = "True", shape_filter = "False")
