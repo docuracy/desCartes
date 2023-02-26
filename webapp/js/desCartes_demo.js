@@ -5,6 +5,19 @@
 // Maximum allowed area of the selection rectangle in square kilometers
 const MAX_ALLOWED_AREA = 10;
 
+var getViewID = true;
+function viewID(){
+	if (getViewID === true) {
+		var dt = new Date().getTime();
+	    getViewID = 'xxxxxxxx-xxxx-xxxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+	        var r = (dt + Math.random()*16)%16 | 0;
+	        dt = Math.floor(dt/16);
+	        return (c=='x' ? r :(r&0x3|0x8)).toString(16);
+	    });
+	}
+	return getViewID
+}
+
 function spinner(toggle = true) {
     $(".spinner div").toggle((!typeof toggle === "string" || toggle === "") && toggle);
     if (typeof toggle === "string") $("#spinner-text").text(toggle);
@@ -109,13 +122,17 @@ $(document).ready(function() {
 
     $("#send").click(function() {
         spinner("");
+        var formData = new FormData($('#road-parameters')[0]);
         var bounds = rect.getBounds();
-        var formData = $("#road-parameters").serialize();
-        $.ajax({
-            type: "GET",
+		formData.append('bounds', bounds.getSouthWest().lng + "," + bounds.getSouthWest().lat + "," + bounds.getNorthEast().lng + "," + bounds.getNorthEast().lat);
+		formData.append('viewID', viewID());
+		$.ajax({
+            type: "POST",
             timeout: 60000, // set a 1-minute timeout in milliseconds
-            dataType: 'json',
-            url: "https://descartes.viaeregiae.org/?bounds=" + encodeURIComponent(bounds.getSouthWest().lng) + "," + encodeURIComponent(bounds.getSouthWest().lat) + "," + encodeURIComponent(bounds.getNorthEast().lng) + "," + encodeURIComponent(bounds.getNorthEast().lat) + "&" + formData,
+			data: formData,
+		    contentType: false,
+		    processData: false,
+            url: "https://descartes.viaeregiae.org/",
             success: function(response) {
                 if (response && response.base64_images && response.base64_images.length > 0) {
                     showCandidateLines(response)
@@ -195,6 +212,7 @@ $(document).ready(function() {
 	      dropdown.append(`<option value="${i}">${defaultValues[i].description}</option>`);
 	    }
 	    dropdown.change(function() {
+		  getViewID = true;
 	      selectedIndex = parseInt(dropdown.val());
 	      populateForm();
 		  $('#custom-inputs').toggle(selectedIndex == defaultValues.length - 1);
@@ -235,6 +253,7 @@ $(document).ready(function() {
 	    });
 	    updateButton(rect);
 	    rect.on('edit', function() {
+			getViewID = true;
 	        updateButton(rect);
 	    });
 	

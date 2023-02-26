@@ -19,6 +19,7 @@ NEXT DEVELOPMENT STEPS: See https://github.com/docuracy/obsolete_code/issues
 
 '''
 
+from typing import Dict, Any, Union
 import rasterio
 import cv2
 import numpy as np
@@ -77,51 +78,27 @@ def get_nearest_parallel_linestring(gdf, geoindex, test_point, max_distance, tan
     return [False, False]    
 
 def desCartes(map_directory,
-              binary_image = "False", 
-              blur_size = "3", # Used to try to remove blemishes from image - greatly reduces number of spurious contours and consequent processing-time
-              binarization_threshold = "210",
-              MAX_ROAD_WIDTH = "20", 
-              MIN_ROAD_WIDTH = "6", 
-              convexity_min = ".9", 
-              min_size_factor = "10", # Multiplied by int(MAX_ROAD_WIDTH)^2 to give minimum size for a contour to be considered
-              inflation_factor = "2.3", # Multiplied by int(MAX_ROAD_WIDTH) to limit average breadth of a contour perpendicular to its skeleton
-              gap_close = "20", # For closing gaps between likely roads
-              shape_filter = "True",
-              templating = "True",
-              template_dir = './data/templates', 
-              template_filenames = ['tree-broadleaf.png', 'tree-conifer.png'], 
-              thresholds = [.7, .7],
-              maximum_tree_density = ".1",
-              visualise = "True",
-              show_images = "False",
-              connectivity_max = "40", # Distance from the endpoints of other candidate roads below which a candidate road will be rejected
-              connectivity_score_min = ".2" # Connectivity considered only between candidate roads with at least this score
-              ):
-    
-    # Necessary to handle parameters passed as strings in URL
-    def cast_params(binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, 
-        convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, 
-        shape_filter, templating, visualise, show_images, connectivity_max, connectivity_score_min):
-        binary_image = False if binary_image == "False" else True
-        blur_size = int(blur_size) if isinstance(blur_size, str) else blur_size
-        binarization_threshold = int(binarization_threshold) if isinstance(binarization_threshold, str) else binarization_threshold
-        MAX_ROAD_WIDTH = int(MAX_ROAD_WIDTH) if isinstance(MAX_ROAD_WIDTH, str) else MAX_ROAD_WIDTH
-        MIN_ROAD_WIDTH = int(MIN_ROAD_WIDTH) if isinstance(MIN_ROAD_WIDTH, str) else MIN_ROAD_WIDTH
-        convexity_min = float(convexity_min) if isinstance(convexity_min, str) else convexity_min
-        min_size_factor = float(min_size_factor) if isinstance(min_size_factor, str) else min_size_factor
-        inflation_factor = float(inflation_factor) if isinstance(inflation_factor, str) else inflation_factor
-        gap_close = int(gap_close) if isinstance(gap_close, str) else gap_close
-        maximum_tree_density = float(maximum_tree_density) if isinstance(maximum_tree_density, str) else maximum_tree_density
-        shape_filter = False if shape_filter == "False" else True
-        templating = False if templating == "False" else True
-        visualise = False if visualise == "False" else True
-        show_images = False if show_images == "False" else True
-        connectivity_max = float(connectivity_max) if isinstance(connectivity_max, str) else connectivity_max
-        connectivity_score_min = float(connectivity_score_min) if isinstance(connectivity_score_min, str) else connectivity_score_min
-        return binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, shape_filter, templating, visualise, show_images, connectivity_max, connectivity_score_min
+      binary_image = False, 
+      blur_size = 3, # Used to try to remove blemishes from image - greatly reduces number of spurious contours and consequent processing-time
+      binarization_threshold = 210,
+      MAX_ROAD_WIDTH = 20, 
+      MIN_ROAD_WIDTH = 6, 
+      convexity_min = .9, 
+      min_size_factor = 10, # Multiplied by int(MAX_ROAD_WIDTH)^2 to give minimum size for a contour to be considered
+      inflation_factor = 2.3, # Multiplied by int(MAX_ROAD_WIDTH) to limit average breadth of a contour perpendicular to its skeleton
+      gap_close = 20, # For closing gaps between likely roads
+      shape_filter = True,
+      templating = True,
+      template_dir = './data/templates', 
+      template_filenames = ['tree-broadleaf.png', 'tree-conifer.png'], 
+      thresholds = [.7, .7],
+      maximum_tree_density = .1,
+      visualise = True,
+      show_images = False,
+      connectivity_max = 40, # Distance from the endpoints of other candidate roads below which a candidate road will be rejected
+      connectivity_score_min = .2 # Connectivity considered only between candidate roads with at least this score
+      ):
 
-    binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, shape_filter, templating, visualise, show_images, connectivity_max, connectivity_score_min = cast_params(binary_image, blur_size, binarization_threshold, MAX_ROAD_WIDTH, MIN_ROAD_WIDTH, convexity_min, min_size_factor, inflation_factor, gap_close, maximum_tree_density, shape_filter, templating, visualise, show_images, connectivity_max, connectivity_score_min)
-    
     # Open the geotiff using rasterio
     with rasterio.open(map_directory + 'geo.tiff') as raster:
         raster_image = raster.read()
