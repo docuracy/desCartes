@@ -618,8 +618,9 @@ def desCartes(map_directory,
     # Create a GeoPackage
     print('Creating Downloadable GeoPackage ...')
     buffer = io.BytesIO()
-    modern_roads_EPSG4326.to_file(buffer, driver="GPKG", layer="modern_roads", vfs="mem", encoding="utf-8")
-    candidate_roads_EPSG4326_gdf.to_file(buffer, driver="GPKG", layer="candidate_roads", vfs="mem", encoding="utf-8")
+    ## buffer method does not accommodate additional layers
+    # modern_roads_EPSG4326.to_file(buffer, driver="GPKG", layer="modern_roads", vfs="mem", encoding="utf-8")
+    # candidate_roads_EPSG4326_gdf.to_file(buffer, driver="GPKG", layer="candidate_roads", vfs="mem", encoding="utf-8")
     road_network_EPSG4326_gdf.to_file(buffer, driver="GPKG", layer="predicted_road_network", vfs="mem", encoding="utf-8")
     vector_json = {"gpkg": base64.b64encode(buffer.getvalue()).decode('utf-8')}
      
