@@ -30,7 +30,6 @@ from shapely.ops import transform
 import math
 import geopandas as gpd
 from extract_modern_roads import transform_linestrings
-import io
 import networkx as nx
 from sklearn.cluster import KMeans
 # import matplotlib.pyplot as plt # Required only for elbow test
@@ -614,15 +613,6 @@ def desCartes(map_directory,
     road_network_EPSG4326_gdf = XY_to_EPSG4326(road_network_gdf)
     road_network_EPSG4326_gdf['modern_road_id'] = road_network_gdf['modern_road_id'].values
     road_network_EPSG4326_gdf.to_file(map_directory + 'desCartes.gpkg', layer="road_network", driver="GPKG")
-    
-    # Create a GeoPackage
-    print('Creating Downloadable GeoPackage ...')
-    buffer = io.BytesIO()
-    ## buffer method does not accommodate additional layers
-    # modern_roads_EPSG4326.to_file(buffer, driver="GPKG", layer="modern_roads", vfs="mem", encoding="utf-8")
-    # candidate_roads_EPSG4326_gdf.to_file(buffer, driver="GPKG", layer="candidate_roads", vfs="mem", encoding="utf-8")
-    road_network_EPSG4326_gdf.to_file(buffer, driver="GPKG", layer="predicted_road_network", vfs="mem", encoding="utf-8")
-    vector_json = {"gpkg": base64.b64encode(buffer.getvalue()).decode('utf-8')}
      
 ###################
 ## VISUALISATION ##
@@ -678,4 +668,4 @@ def desCartes(map_directory,
             cv2.waitKey(0)
     
     print('... completed.')
-    return contours, skeleton, base64_images, vector_json, ''
+    return contours, skeleton, base64_images, ''
