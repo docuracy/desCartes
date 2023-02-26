@@ -19,7 +19,6 @@ NEXT DEVELOPMENT STEPS: See https://github.com/docuracy/obsolete_code/issues
 
 '''
 
-from typing import Dict, Any, Union
 import rasterio
 import cv2
 import numpy as np
@@ -94,9 +93,7 @@ def desCartes(map_directory,
       thresholds = [.7, .7],
       maximum_tree_density = .1,
       visualise = True,
-      show_images = False,
-      connectivity_max = 40, # Distance from the endpoints of other candidate roads below which a candidate road will be rejected
-      connectivity_score_min = .2 # Connectivity considered only between candidate roads with at least this score
+      show_images = False
       ):
 
     # Open the geotiff using rasterio
