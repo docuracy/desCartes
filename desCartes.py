@@ -95,6 +95,24 @@ def desCartes(map_directory,
       visualise = True,
       show_images = False
       ):
+    
+    binary_image = bool(binary_image)
+    blur_size = int(blur_size)
+    binarization_threshold = int(binarization_threshold)
+    MAX_ROAD_WIDTH = float(MAX_ROAD_WIDTH) 
+    MIN_ROAD_WIDTH = float(MIN_ROAD_WIDTH) 
+    convexity_min = float(convexity_min) 
+    min_size_factor = float(min_size_factor)
+    inflation_factor = float(inflation_factor)
+    gap_close = float(gap_close)
+    shape_filter = bool(shape_filter)
+    templating = bool(templating)
+    template_dir = str(template_dir) 
+    template_filenames = list(template_filenames)
+    thresholds = list(thresholds)
+    maximum_tree_density = float(maximum_tree_density)
+    visualise = bool(visualise)
+    show_images = bool(show_images)
 
     # Open the geotiff using rasterio
     with rasterio.open(map_directory + 'geo.tiff') as raster:
