@@ -94,7 +94,7 @@ function showCandidateLines(response) {
 	$("<span class='comment'>To improve results, you may need to adjust the parameters before processing.</span>").appendTo(thumbnailsContainer);
     var downloadButton = $("<button class='download'>").text("Download GeoPackage").appendTo(thumbnailsContainer);
     downloadButton.click(function() {
-		window.open(response.GeoPackage, '_blank');
+		window.open('../../output/' + response.GeoPackage, '_blank');
 	});
 
 }
