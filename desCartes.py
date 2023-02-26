@@ -75,26 +75,65 @@ def get_nearest_parallel_linestring(gdf, geoindex, test_point, max_distance, tan
 
     return [False, False]    
 
-def desCartes(
-    map_directory: str,
-    binary_image: bool = False,
-    blur_size: int = 3,
-    binarization_threshold: int = 210,
-    MAX_ROAD_WIDTH: float = 20.0,
-    MIN_ROAD_WIDTH: int = 6,
-    convexity_min: float = 0.9,
-    min_size_factor: float = 10.0,
-    inflation_factor: float = 2.3,
-    gap_close: float = 20.0,
-    shape_filter: bool = True,
-    templating: bool = True,
-    template_dir: str = './data/templates',
-    template_filenames: list[str] = ['tree-broadleaf.png', 'tree-conifer.png'],
-    thresholds: list[float] = [0.7, 0.7],
-    maximum_tree_density: float = 0.1,
-    visualise: bool = True,
-    show_images: bool = False
-    ):
+## TO DO: Investigate why type casting like this causes the server to hang.
+# def desCartes(
+#     map_directory: str,
+#     binary_image: bool = False,
+#     blur_size: int = 3,
+#     binarization_threshold: int = 210,
+#     MAX_ROAD_WIDTH: float = 20.0,
+#     MIN_ROAD_WIDTH: int = 6,
+#     convexity_min: float = 0.9,
+#     min_size_factor: float = 10.0,
+#     inflation_factor: float = 2.3,
+#     gap_close: float = 20.0,
+#     shape_filter: bool = True,
+#     templating: bool = True,
+#     template_dir: str = './data/templates',
+#     template_filenames: list[str] = ['tree-broadleaf.png', 'tree-conifer.png'],
+#     thresholds: list[float] = [0.7, 0.7],
+#     maximum_tree_density: float = 0.1,
+#     visualise: bool = True,
+#     show_images: bool = False
+#     ):
+
+def desCartes(map_directory,
+      binary_image = False, 
+      blur_size = 3, # Used to try to remove blemishes from image - greatly reduces number of spurious contours and consequent processing-time
+      binarization_threshold = 210,
+      MAX_ROAD_WIDTH = 20, 
+      MIN_ROAD_WIDTH = 6, 
+      convexity_min = .9, 
+      min_size_factor = 10, # Multiplied by int(MAX_ROAD_WIDTH)^2 to give minimum size for a contour to be considered
+      inflation_factor = 2.3, # Multiplied by int(MAX_ROAD_WIDTH) to limit average breadth of a contour perpendicular to its skeleton
+      gap_close = 20, # For closing gaps between likely roads
+      shape_filter = True,
+      templating = True,
+      template_dir = './data/templates', 
+      template_filenames = ['tree-broadleaf.png', 'tree-conifer.png'], 
+      thresholds = [.7, .7],
+      maximum_tree_density = .1,
+      visualise = True,
+      show_images = False
+      ):
+    
+    binary_image = bool(binary_image)
+    blur_size = int(blur_size)
+    binarization_threshold = int(binarization_threshold)
+    MAX_ROAD_WIDTH = float(MAX_ROAD_WIDTH) 
+    MIN_ROAD_WIDTH = int(MIN_ROAD_WIDTH) 
+    convexity_min = float(convexity_min) 
+    min_size_factor = float(min_size_factor)
+    inflation_factor = float(inflation_factor)
+    gap_close = float(gap_close)
+    shape_filter = bool(shape_filter)
+    templating = bool(templating)
+    template_dir = str(template_dir) 
+    template_filenames = list(template_filenames)
+    thresholds = list(thresholds)
+    maximum_tree_density = float(maximum_tree_density)
+    visualise = bool(visualise)
+    show_images = bool(show_images)
 
     # Open the geotiff using rasterio
     with rasterio.open(map_directory + 'geo.tiff') as raster:
