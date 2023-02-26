@@ -53,12 +53,8 @@ def get_desCartes():
             else:
                 return jsonify({"message": "No bounds found in the request."})
         else:
-            # POST requests are not properly handled by nginx/Apache on IONOS Plesk system
-            msg = request.get_json().get('msg')
-            if msg:
-                return jsonify({"message": msg})
-            else:
-                return jsonify({"message": "POST obsolete_code!"})
+            # POST requests are not properly handled by flask
+            return jsonify({"message": "POST not working"})
     except Exception as e:
         return jsonify({"error": str(e)})
 
