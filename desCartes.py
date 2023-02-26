@@ -117,7 +117,7 @@ def desCartes(map_directory,
     print('Finding road contours ...')
     MIN_SIZE = float(min_size_factor) * float(MAX_ROAD_WIDTH) ** 2
     if binary_image is False:
-        blurred_grayscale_image = cv2.medianBlur(grayscale_image, blur_size) 
+        blurred_grayscale_image = cv2.medianBlur(grayscale_image, int(blur_size)) 
         # binary_image = cv2.threshold(grayscale_image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1] # Tends to create gaps in road lines
         _, binary_image = cv2.threshold(blurred_grayscale_image, binarization_threshold, 255, cv2.THRESH_BINARY)
     height, width = binary_image.shape[:2]
