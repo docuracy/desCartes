@@ -200,7 +200,7 @@ def erase_areas(image,
             # Define acceptable range of values for each metric
             std_deviation_multiplier = 3
             area_range = (25.34 - std_deviation_multiplier * 4.98, 25.34 + std_deviation_multiplier * 4.98)
-            convexity_range = (0.9572 - std_deviation_multiplier * 0.0306, 0.9572 + std_deviation_multiplier * 0.0306)
+            convexity_range = (0.9572 - std_deviation_multiplier * 0.0306, 1)
             aspect_ratio_range = (0.5085 - std_deviation_multiplier * 0.1082, 0.5085 + std_deviation_multiplier * 0.1082)
             
             # Calculate areas of contour and its convex hull
@@ -233,6 +233,7 @@ def erase_areas(image,
             ## skeletonize and then get contours, and reduce those to single linestrings (as in desCartes.py).
             ## Get single-dash lines by eroding the dilated image until they disappear, then subtract from the dilated image;
             ## skeletonize and contour as before.
+            ## Delete dashes from the original binarized image - more effective than the size filter operating on later binarized image.
             ##
             ## The rest of this section is redundant except possibly for visualisation purposes.
             
