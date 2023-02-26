@@ -617,16 +617,18 @@ def desCartes(map_directory,
     candidate_roads_EPSG4326_gdf = XY_to_EPSG4326(candidate_roads)
     candidate_roads_EPSG4326_gdf['modern_road_id'] = candidate_roads['modern_road_id'].values
     candidate_roads_EPSG4326_gdf['score'] = candidate_roads['score'].values
-    candidate_roads_EPSG4326_gdf.to_file(map_directory + 'candidate_roads.gpkg', layer="candidate_roads", driver="GPKG")
+    candidate_roads_EPSG4326_gdf.to_file(map_directory + 'desCartes.gpkg', layer="candidate_roads", driver="GPKG")
     
     road_network_EPSG4326_gdf = XY_to_EPSG4326(road_network_gdf)
     road_network_EPSG4326_gdf['modern_road_id'] = road_network_gdf['modern_road_id'].values
-    road_network_EPSG4326_gdf.to_file(map_directory + 'road_network.gpkg', layer="road_network", driver="GPKG")
+    road_network_EPSG4326_gdf.to_file(map_directory + 'desCartes.gpkg', layer="road_network", driver="GPKG")
     
     # Create a GeoPackage
     print('Creating Downloadable GeoPackage ...')
     buffer = io.BytesIO()
-    road_network_EPSG4326_gdf.to_file(buffer, driver="GPKG", layer="candidate_roads", vfs="mem", encoding="utf-8")
+    modern_roads_EPSG4326.to_file(buffer, driver="GPKG", layer="modern_roads", vfs="mem", encoding="utf-8")
+    candidate_roads_EPSG4326_gdf.to_file(buffer, driver="GPKG", layer="candidate_roads", vfs="mem", encoding="utf-8")
+    road_network_EPSG4326_gdf.to_file(buffer, driver="GPKG", layer="predicted_road_network", vfs="mem", encoding="utf-8")
     vector_json = {"gpkg": base64.b64encode(buffer.getvalue()).decode('utf-8')}
      
 ###################

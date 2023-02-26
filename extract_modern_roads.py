@@ -14,7 +14,7 @@ import rasterio.transform
 
 def transform_linestrings(directory, transformation):
     # Read the linestrings from the GeoPackage
-    gdf = gpd.read_file(directory + 'modern_roads.gpkg', layer='modern_roads')
+    gdf = gpd.read_file(directory + 'desCartes.gpkg', layer='modern_roads')
     
     # Get the coordinates of the linestrings as a list of tuples, then transform to pixel coordinates
     coords_list = list(gdf.geometry.apply(lambda geom: list(geom.coords)).values)
@@ -34,7 +34,7 @@ def extract_modern_roads(DATADIR, OUTPUTDIR, ROADFILE, LOCATION_NAME, EXTENT, sh
     cropped_gdf = gpd.clip(gdf, box(*EXTENT))
     cropped_gdf = cropped_gdf[~cropped_gdf.is_empty]
     cropped_gdf = cropped_gdf.explode(index_parts=True)  # Cropping can cause creation of multiparts 
-    cropped_gdf.to_file(OUTPUTDIR + 'modern_roads.gpkg', driver="GPKG")
+    cropped_gdf.to_file(OUTPUTDIR + 'desCartes.gpkg', layer="modern_roads", driver="GPKG")
     if shapefile:
         root, _ = os.path.splitext(ROADFILE)
         cropped_gdf.to_file(OUTPUTDIR + root + '.shp')
