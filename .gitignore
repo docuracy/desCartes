@@ -19,3 +19,10 @@ output/marshfield/modern_roads.gpkg
 output/marshfield/geo.tiff
 output/marshfield/geo-dashes.tiff
 output/marshfield/candidate_roads.gpkg
+output/marshfield-2/desCartes.gpkg
+output/marshfield-2/geo.tiff
+output/marshfield-2/OS_Open_Roads_no-motorways_EPSG4326.cpg
+output/marshfield-2/OS_Open_Roads_no-motorways_EPSG4326.dbf
+output/marshfield-2/OS_Open_Roads_no-motorways_EPSG4326.prj
+output/marshfield-2/OS_Open_Roads_no-motorways_EPSG4326.shp
+output/marshfield-2/OS_Open_Roads_no-motorways_EPSG4326.shx

@@ -39,15 +39,16 @@ EXTENT_NORTHEAST_LAT, EXTENT_NORTHEAST_LNG = 51.47372515642006, -2.3297882080078
 ## If a geotiff already exist in this directory, it will be re-used, and the coordinates given above ignored.
 # LOCATION_NAME = 'longborough'
 # LOCATION_NAME = 'longborough-south'
-LOCATION_NAME = 'marshfield'
+# LOCATION_NAME = 'marshfield'
+LOCATION_NAME = 'marshfield-2'
 # LOCATION_NAME = 'tolleshunt'
 # LOCATION_NAME = 'hampton'
 
 ## Uncomment one of these methods, or create your own in the IMAGE PROCESSING CALLS section.
 ## Any name you type here will be used in creating a filename, so avoid funky characters.
 # METHOD = 'road_contours'
-METHOD = 'progressive'
-# METHOD = 'development'
+# METHOD = 'progressive'
+METHOD = 'development'
 
 RASTER_TILE_KEY = 'ySlCyGP2kmmfm9Dgtiqj' # TO USE THE URL GIVEN BELOW, GET YOUR OWN KEY FROM https://cloud.maptiler.com/account/keys/
 RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb10k1888/{z}/{x}/{y}.jpg?key=' + RASTER_TILE_KEY
@@ -336,7 +337,7 @@ match METHOD:
         # result_binary, _ = erase_areas(result_binary, raster_image_gray, 3, contours = False, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase white noise
         
     case _: # Default 
-        contours, skeleton, base64_images, vector_json, message = desCartes(OUTPUTDIR, template_dir = './../data/templates', show_images = "True", shape_filter = "False")
+        contours, skeleton, base64_images, vector_json, message = desCartes(OUTPUTDIR, template_dir = './../data/templates', show_images = True, shape_filter = False, MAX_ROAD_WIDTH = 40)
         
 # Attempt to bridge gaps in skeleton by dilation and re-skeletonization
 # def skeleton_contours(skeleton_binary, gap = 15, step = 1, SHOW_IMAGES = False): # Larger steps run risk of blurring
