@@ -17,10 +17,10 @@ DATADIR = './data/'
 
 app = Flask(__name__)
 
-@app.route("/", methods=['GET', 'POST'])
+@app.route("/", methods=['GET', 'POST']) # REMOVE GET METHOD ONCE POST CONFIGURATION IS COMPLETE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 def get_desCartes():
     try:
-        if request.method == 'GET':
+        if request.method == 'GET': # REMOVE GET METHOD ONCE POST CONFIGURATION IS COMPLETE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             args = {k: v for k, v in request.args.items() if k not in ['bounds', 'url', 'zoom', 'modern_roads', 'default_values_dropdown']}
             bounds = request.args.get('bounds')
             if bounds:
@@ -52,9 +52,38 @@ def get_desCartes():
                 return jsonify({"base64_images": base64_images, "GeoPackage": vector_json, "message": message})
             else:
                 return jsonify({"message": "No bounds found in the request."})
-        else:
-            # POST requests are not properly handled by flask
-            return jsonify({"message": "POST not working"})
+        elif request.method == 'POST':
+            args = {k: v for k, v in request.form.items() if k not in ['bounds', 'url', 'zoom', 'modern_roads', 'default_values_dropdown']}
+            bounds = request.form.get('bounds')
+            if bounds:
+                EXTENT = bounds.split(",")
+                EXTENT = [float(x) for x in EXTENT]
+        
+                RASTER_TILE_URL = request.form.get('url')
+                RASTER_TILE_ZOOM = int(request.form.get('zoom'))
+                MODERN_ROADFILE = request.form.get('modern_roads')
+        
+                LOCATION_NAME = re.sub(r'https://|[{}/.?]', '-', RASTER_TILE_URL+ '-' + bounds).replace(',', '_').strip('-')
+                OUTPUTDIR = './output/' + LOCATION_NAME + '/'
+                GEOTIFF_NAME = 'geo.tiff'
+        
+                if not os.path.exists(OUTPUTDIR + GEOTIFF_NAME):
+                    create_geotiff(RASTER_TILE_URL, OUTPUTDIR, GEOTIFF_NAME, EXTENT, RASTER_TILE_ZOOM)
+                    extract_modern_roads(DATADIR, OUTPUTDIR, MODERN_ROADFILE, LOCATION_NAME, EXTENT)
+        
+                _, _, base64_images, vector_json, message = desCartes(OUTPUTDIR, **args)
+        
+                # Clean up output directory
+                now = datetime.datetime.now()
+                cutoff = now - datetime.timedelta(hours=8)
+                for item in os.listdir('./output/'):
+                    path = os.path.join('./output/', item)
+                    if os.path.isdir(path) and datetime.datetime.fromtimestamp(os.path.getctime(path)) < cutoff:
+                        shutil.rmtree(path)
+        
+                return jsonify({"base64_images": base64_images, "GeoPackage": vector_json, "message": message})
+            else:
+                return jsonify({"message": "No bounds found in the request."})
     except Exception as e:
         return jsonify({"error": str(e)})
 
