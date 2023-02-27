@@ -144,9 +144,18 @@ body {
 
 .download {
 	float: left;
-    clear: left;
-    background-color: yellow;
-    cursor: pointer;
+	clear: left;
+	background-color: yellow;
+	cursor: pointer;
+	padding: 5px;
+	border-width: 1px;
+	border-radius: 4px;
+	box-shadow: 2px 2px 4px rgb(0 0 0 / 50%);
+}
+
+.download:not(:first-of-type) {
+	clear: none;
+    margin-left: 8px;
 }
 
 .close-button {

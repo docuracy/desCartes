@@ -93,9 +93,26 @@ function showCandidateLines(response) {
     }
 	$("<span class='comment'>To improve results, you may need to adjust the parameters before processing.</span>").appendTo(thumbnailsContainer);
     var downloadButton = $("<button class='download'>").text("Download GeoPackage").appendTo(thumbnailsContainer);
-    downloadButton.click(function() {
-		window.open('../../git/' + response.GeoPackage, '_blank');
+	downloadButton.click(function() {
+	    var link = document.createElement('a');
+	    link.href = '../../git/' + response.GeoPackage;
+	    link.download = 'desCartes.gpkg'; 
+	    document.body.appendChild(link);
+		console.log(link)
+	    link.click();
+	    document.body.removeChild(link);
 	});
+	var zipButton = $("<button class='download'>").text("Download Zipped Images").appendTo(thumbnailsContainer);
+	zipButton.click(function() {
+	    var link = document.createElement('a');
+		var directory = response.GeoPackage.substring(0, response.GeoPackage.lastIndexOf('/') + 1);
+	    link.href = '../../git/' + directory + '/images.zip';
+	    link.download = 'images.zip';
+	    document.body.appendChild(link);
+	    link.click();
+	    document.body.removeChild(link);
+	});
+
 
 }
 

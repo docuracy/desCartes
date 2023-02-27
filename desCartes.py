@@ -22,6 +22,7 @@ NEXT DEVELOPMENT STEPS: See https://github.com/docuracy/obsolete_code/issues
 import rasterio
 import cv2
 import os
+import zipfile
 import numpy as np
 from skimage.morphology import skeletonize
 import base64
@@ -737,6 +738,12 @@ def desCartes(map_directory,
         road_network_visualisation = cv2.cvtColor(grayscale_image, cv2.COLOR_GRAY2BGR)
         road_network_visualisation = draw_linestrings_on_image(road_network_visualisation, road_network_gdf, (0, 0, 255, 255), 2)
         add_to_result_images("Predicted Road Network", road_network_visualisation)
+        
+        jpg_files = [os.path.join(map_directory, f) for f in os.listdir(map_directory) if f.endswith('.jpg')]
+        zip_path = os.path.join(map_directory, 'images.zip')
+        with zipfile.ZipFile(zip_path, 'w') as zip_file:
+            for jpg_file in jpg_files:
+                zip_file.write(jpg_file, os.path.basename(jpg_file))
                 
         if show_images:
             print(str(len(result_images)) + ' result images saved.')
