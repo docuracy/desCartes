@@ -71,14 +71,14 @@ function showCandidateLines(response) {
 
     var thumbnailsContainer = $("<div>").addClass("thumbnails-container").appendTo(modalDialog);
 
-    response.base64_images.forEach(function(image, i) {
+    response.result_images.forEach(function(image, i) {
         var figure = $("<div>").addClass("figure").appendTo(thumbnailsContainer);
-        var thumbnail = $("<img>").addClass("thumbnail").attr("src", "data:image/jpeg;base64," + image.image).appendTo(figure);
+        var thumbnail = $("<img>").addClass("thumbnail").attr("src", "data:image/jpeg;base64," + image.thumbnail).appendTo(figure);
         var label = $("<div>").addClass("thumbnail-label").text((i + 1) + '. ' + image.label).appendTo(figure);
 
         thumbnail.click(function() {
             var overlay = $("<div>").addClass("overlay").appendTo("body");
-            var fullscreenImage = $("<img>").addClass("fullscreen-image").attr("src", "data:image/jpeg;base64," + image.image).appendTo("body");
+            var fullscreenImage = $("<img>").addClass("fullscreen-image").attr("src", "../../git/" + image.url).appendTo("body");
             var closeButton = $("<div>").addClass("close-button").text("X").appendTo("body");
             closeButton.click(function() {
                 fullscreenImage.remove();

@@ -38,7 +38,7 @@ def get_desCartes():
                 create_geotiff(RASTER_TILE_URL, OUTPUTDIR, GEOTIFF_NAME, EXTENT, RASTER_TILE_ZOOM)
                 extract_modern_roads(DATADIR, OUTPUTDIR, MODERN_ROADFILE, VIEW_ID, EXTENT)
     
-            _, _, base64_images, message = desCartes(OUTPUTDIR, **args)
+            _, _, result_images, message = desCartes(OUTPUTDIR, **args)
     
             # Clean up output directory
             now = datetime.datetime.now()
@@ -48,7 +48,7 @@ def get_desCartes():
                 if os.path.isdir(path) and datetime.datetime.fromtimestamp(os.path.getctime(path)) < cutoff:
                     shutil.rmtree(path)
     
-            return jsonify({"base64_images": base64_images, "GeoPackage": OUTPUTDIR + 'desCartes.gpkg', "message": message})
+            return jsonify({"result_images": result_images, "GeoPackage": OUTPUTDIR + 'desCartes.gpkg', "message": message})
         else:
             return jsonify({"message": "No bounds found in the request."})
             

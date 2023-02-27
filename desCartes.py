@@ -21,6 +21,7 @@ NEXT DEVELOPMENT STEPS: See https://github.com/docuracy/obsolete_code/issues
 
 import rasterio
 import cv2
+import os
 import numpy as np
 from skimage.morphology import skeletonize
 import base64
@@ -209,6 +210,18 @@ def desCartes(map_directory,
     maximum_tree_density = float(maximum_tree_density)
     visualise = bool(visualise)
     show_images = bool(show_images)
+    
+    def add_to_result_images(label, image):
+        if visualise:
+            thumbnail = cv2.resize(image, (200, int(200 * image.shape[0] / image.shape[1])))
+            fullsize_path = os.path.join(map_directory, 'images', label)
+            cv2.imwrite(fullsize_path, image)
+            thumbnail_base64 = base64.b64encode(cv2.imencode('.jpg', thumbnail)[1]).decode("utf-8")
+            result_images.append({
+                "label": "Segmented map image",
+                "url": binary_image,
+                "thumbnail": thumbnail_base64
+            })
 
     # Open the geotiff using rasterio
     with rasterio.open(map_directory + 'geo.tiff') as raster:
@@ -236,9 +249,8 @@ def desCartes(map_directory,
         _, binary_image = cv2.threshold(blurred_grayscale_image, binarization_threshold, 255, cv2.THRESH_BINARY)
     height, width = binary_image.shape[:2]
 
-    base64_images = []
-    if visualise:
-        base64_images.append({"label": "Thresholded map image", "image": base64.b64encode(cv2.imencode('.jpg', binary_image)[1]).decode("utf-8")})      
+    result_images = []
+    add_to_result_images("Thresholded map image", binary_image)
     
     # Remove blobs (for example, circular markers from roadways on GB OS maps)
     params = cv2.SimpleBlobDetector_Params()
@@ -325,8 +337,7 @@ def desCartes(map_directory,
             contour_validity.append(False)
             contour_areas.append(0)   
     
-    if visualise:
-        base64_images.append({"label": "Thinned map image", "image": base64.b64encode(cv2.imencode('.jpg', binary_image)[1]).decode("utf-8")})
+    add_to_result_images("Thinned map image", binary_image)
     
     print("Testing and filtering shapes ...")
     likely_roads = []
@@ -405,7 +416,7 @@ def desCartes(map_directory,
     print(str(len(likely_roads)) + ' candidate road areas found.')
     
     if len(likely_roads) == 0:
-        return contours, False, base64_images, False, 'No candidate road areas found.'
+        return contours, False, result_images, False, 'No candidate road areas found.'
     
     likely_roads = sum(likely_roads)
     
@@ -428,7 +439,7 @@ def desCartes(map_directory,
         skeleton_mask = np.zeros_like(grayscale_image, dtype=np.uint8)
         skeleton_mask[skeleton == 255] = 255
         likely_roads_visualisation[skeleton_mask > 0] = (0, 255, 255, 255)
-        base64_images.append({"label": "Skeletonized candidate roads", "image": base64.b64encode(cv2.imencode('.jpg', likely_roads_visualisation)[1]).decode("utf-8")})
+        add_to_result_images("Skeletonized candidate roads", likely_roads_visualisation)
 
 #######################
 ## VECTOR PROCESSING ##
@@ -501,8 +512,7 @@ def desCartes(map_directory,
     print(str(len(split_lineStrings)-len(lineStrings)) + ' splits made ...')
     lineStrings = split_lineStrings       
         
-    if visualise:
-        base64_images.append({"label": "Road boundary checks (with modern OS roads)", "image": base64.b64encode(cv2.imencode('.jpg', proximity_visualisation)[1]).decode("utf-8")})
+    add_to_result_images("Road boundary checks (with modern OS roads)", proximity_visualisation)
 
 #############
 ## SCORING ##
@@ -722,11 +732,11 @@ def desCartes(map_directory,
                 cv2.polylines(overlay, [coords], isClosed=False, color=colour, thickness=2)
             visualisation = cv2.addWeighted(overlay, opacity, visualisation, 1 - opacity, 0)
     
-        base64_images.append({"label": "Segmented map image", "image": base64.b64encode(cv2.imencode('.jpg', visualisation)[1]).decode("utf-8")}) 
+        add_to_result_images("Segmented map image", visualisation) 
         
         road_network_visualisation = cv2.cvtColor(grayscale_image, cv2.COLOR_GRAY2BGR)
         road_network_visualisation = draw_linestrings_on_image(road_network_visualisation, road_network_gdf, (0, 0, 255, 255), 2)
-        base64_images.append({"label": "Predicted Road Network", "image": base64.b64encode(cv2.imencode('.jpg', road_network_visualisation)[1]).decode("utf-8")})
+        add_to_result_images("Predicted Road Network", road_network_visualisation)
                 
         if show_images:
             print('Showing images ...')
@@ -739,4 +749,4 @@ def desCartes(map_directory,
             cv2.waitKey(0)
     
     print('... completed.')
-    return contours, skeleton, base64_images, ''
+    return contours, skeleton, result_images, ''
