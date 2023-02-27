@@ -121,7 +121,7 @@ $(document).ready(function() {
 		    processData: false,
             url: "https://descartes.viaeregiae.org/",
             success: function(response) {
-                if (response && response.base64_images && response.base64_images.length > 0) {
+                if (response && response.result_images && response.result_images.length > 0) {
                     showCandidateLines(response)
                 } else {
                     spinner("Sorry, something went wrong. The server returned an unexpected response. [" + response.error + "]");
