@@ -75,6 +75,24 @@ def get_nearest_parallel_linestring(gdf, geoindex, test_point, max_distance, tan
 
     return [False, False]    
 
+def cut(line, distance): ## https://gist.github.com/sgillies/465156#file_cut.py
+    # Cuts a line in two at a distance from its starting point
+    if distance <= 0.0 or distance >= line.length:
+        print('No cut made: distance = '+str(distance)+', line length = '+str(line.length)+'.')
+        return [LineString(line)], False
+    coords = list(line.coords)
+    for i, p in enumerate(coords):
+        pd = line.project(Point(p))
+        if pd == distance:
+            return [
+                LineString(coords[:i+1]),
+                LineString(coords[i:])]
+        if pd > distance:
+            cp = line.interpolate(distance)
+            return [
+                LineString(coords[:i] + [(cp.x, cp.y)]),
+                LineString([(cp.x, cp.y)] + coords[i:])]
+
 ## TO DO: Investigate why type casting like this causes the server to hang.
 # def desCartes(
 #     map_directory: str,
@@ -377,92 +395,66 @@ def desCartes(map_directory,
 ## VECTOR ANALYSIS ##
 #####################
     
-    ## Measure the proximity of modern roads and likely road edges at sample points along each lineString
+    ## Measure the proximity of modern roads and likely road edges at sample points along each lineString,
+    ## and split lineStrings between test points where the road edge test result changes.
     print("Measuring proximities ...")
-    modern_road_labels = []
+    split_lineStrings = []
+    tests = []
     proximity_visualisation = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
     proximity_visualisation = draw_linestrings_on_image(proximity_visualisation, modern_roads, linestring_color = (0, 255, 255), linestring_thickness = 3)
-    proximity = []
     for lineString in lineStrings:
-        proximity.append([])
-        modern_road_labels.append([])
+        lineString_residue = lineString
+        tests.append([])
         testLength = lineString.length - MAX_ROAD_WIDTH # Do not test in proximity to junctions
         if testLength <= 0:
-            proximity[-1].append(["Too short: "+str(lineString.length)])
+            tests[-1].append({'testLength': False})
+            split_lineStrings.append(lineString_residue)
             continue
         test_point_count = max(2, 1 + math.ceil(testLength / MAX_ROAD_WIDTH)) #  Test at least every MAX_ROAD_WIDTH pixels
         interval_length = testLength / (test_point_count - 1)
         previouspoint = lineString.interpolate(MAX_ROAD_WIDTH / 4)
+        previous_road_test = None
+        total_split_distance = 0
         # Iterate over the intervals and find the normal_vector at each one
         for i in range(test_point_count):
-            test_distance = MAX_ROAD_WIDTH / 2 + interval_length * i
-            proximity[-1].append([test_distance])
-            test_point = lineString.interpolate(test_distance)
+            tests[-1].append({'testLength': False, 'modern_road_distance': False, 'modern_road_id': False, 'road_boundaries': []})
+            test_distance = - total_split_distance + MAX_ROAD_WIDTH / 2 + interval_length * i
+            tests[-1][-1]['testLength'] = test_distance
+            test_point = lineString_residue.interpolate(test_distance)
             cv2.circle(proximity_visualisation, (int(test_point.x), int(test_point.y)), 4, (0, 0, 255), -1)
             tangent_angle = np.arctan2(test_point.y - previouspoint.y, test_point.x - previouspoint.x)
-            proximity[-1][-1].extend(get_nearest_parallel_linestring(modern_roads, modern_roads_sindex, test_point, 3 * MAX_ROAD_WIDTH, tangent_angle, max_angle = 15 * np.pi / 180))
-            modern_road_labels[-1].append(proximity[-1][-1][-1])
+            tests[-1][-1]['modern_road_distance'], tests[-1][-1]['modern_road_id'] = get_nearest_parallel_linestring(modern_roads, modern_roads_sindex, test_point, 3 * MAX_ROAD_WIDTH, tangent_angle, max_angle = 15 * np.pi / 180)
             normal_angle = np.pi/2 + tangent_angle
             normal_vector = np.array([-np.cos(normal_angle), np.sin(normal_angle)])
     
             # Test the binary image at points along the normal vector
             for sign in [-1, 1]:
-                proximity[-1][-1].append(False)
+                tests[-1][-1]['road_boundaries'].append(False)
                 for d in range(math.ceil(MAX_ROAD_WIDTH / 2)):
                     offset_pixel = (int(round(test_point.x + sign * d * normal_vector[0])), int(round(test_point.y - sign * d * normal_vector[1])))
                     cv2.circle(proximity_visualisation, (int(offset_pixel[0]), int(offset_pixel[1])), 2, (0, 255, 0), -1)
                     if offset_pixel[0] >= 0 and offset_pixel[0] < binary_image.shape[1] and offset_pixel[1] >= 0 and offset_pixel[1] < binary_image.shape[0] and binary_image[offset_pixel[1],offset_pixel[0]] == 0:
                         # likely_road += 1
-                        proximity[-1][-1][-1] = d
+                        tests[-1][-1]['road_boundaries'][-1] = d
                         break
             previouspoint = test_point
             
-    # Concatenate unique non-False modern road ids
-    modern_road_labels = ['; '.join(set(str(item) for item in row if item)) for row in modern_road_labels]
-    
-    '''
-    TO DO: Divide and delete continuous sections of lineStrings that have failed to meet the road boundary test
-    
-    '''
-
+            road_test = tests[-1][-1]['road_boundaries'][0] is not False and tests[-1][-1]['road_boundaries'][1] is not False and sum(tests[-1][-1]['road_boundaries']) + 1 >= MIN_ROAD_WIDTH
+            if i > 1 and not previous_road_test == road_test: # Split the lineString
+                split_distance = tests[-1][-1]['testLength'] - interval_length / 2
+                total_split_distance += split_distance
+                lineString_first_part, lineString_residue = cut(lineString_residue, split_distance)
+                split_lineStrings.append(lineString_first_part)
+                last_test = tests[-1].pop()
+                tests.append([last_test])
+            previous_road_test = road_test
+        split_lineStrings.append(lineString_residue)
+     
+    print(str(len(split_lineStrings)-len(lineStrings)) + ' splits made ...')
+    lineStrings = split_lineStrings       
         
     if visualise:
         base64_images.append({"label": "Road boundary checks (with modern OS roads)", "image": base64.b64encode(cv2.imencode('.jpg', proximity_visualisation)[1]).decode("utf-8")})
-    
-    # # Split at modern road boundaries and label any matched candidate roads - NOT ASSIGNING MODERN ROAD LABELS PROPERLY TO SPLIT SECTIONS
-    # print("Splitting " + str(len(lineStrings)) + " candidate roads at modern road boundaries ...")
-    # split_lineStrings = []
-    # split_proximity = []
-    # modern_road_labels = []
-    # for lineString, prox in zip(lineStrings, proximity):
-    #     residue_lineString = lineString
-    #     residue_prox = prox
-    #
-    #     i = 1
-    #     while i < len(residue_prox):
-    #         if residue_prox[i][2] != residue_prox[i-1][2]:
-    #             # Split the linestring at the midpoint between consecutive test points where a change in the modern road id is detected
-    #             mid_point_distance = (residue_prox[i][0] + residue_prox[i-1][0]) / 2
-    #             split_point = residue_lineString.interpolate(mid_point_distance)
-    #             points_before_split_point = [point for point in residue_lineString.coords if residue_lineString.project(Point(point)) < mid_point_distance]
-    #             used_points = len(points_before_split_point)
-    #             split_lineStrings.append(LineString([*points_before_split_point, split_point]))
-    #             residue_lineString = LineString([split_point, *residue_lineString.coords[used_points:]])
-    #             split_proximity.append(residue_prox[:i])
-    #             modern_road_labels.append('' if residue_prox[i-1][2] == False else residue_prox[i-1][2])
-    #             residue_prox = residue_prox[i:]
-    #             for residue_p in residue_prox:
-    #                 residue_p[0] -= mid_point_distance
-    #             if len(residue_prox) > 1:
-    #                 i = 0
-    #         i += 1
-    #
-    #     split_lineStrings.append(residue_lineString)
-    #     split_proximity.append(residue_prox)
-    #     modern_road_labels.append('' if (not isinstance(residue_prox[0][0], bool) or residue_prox[0][2] == False) else residue_prox[0][2])
-    #
-    # lineStrings = split_lineStrings
-    # proximity = split_proximity
 
 #############
 ## SCORING ##
@@ -470,29 +462,31 @@ def desCartes(map_directory,
     
     print("Scoring " + str(len(lineStrings)) + " candidate roads ...")
     scores = []
-    for lineString, prox in zip(lineStrings, proximity):
-        if len(prox) == 0:
+    modern_road_labels = []
+    for lineString, test_set in zip(lineStrings, tests):
+        modern_road_labels.append([])
+        if len(test_set) == 0:
             scores.append(0)
             continue
-        elif len(prox) == 1 and not isinstance(prox[0], bool): # LineString was too short to assess
+        elif len(test_set) == 1 and test_set[0]['testLength'] == False: # LineString was too short to assess
             scores.append(.3)
             continue
         count = 0
-        for subarr in prox:
-            if subarr[3] is not False and subarr[4] is not False and subarr[3] + subarr[4] + 1 >= MIN_ROAD_WIDTH: # Road lines on both sides
-                count += 1 if subarr[1] is not False else .7 # Modern road proximity
+        for test in test_set:
+            modern_road_labels[-1].append(test['modern_road_id'])
+            if test['road_boundaries'][0] is not False and test['road_boundaries'][1] is not False and sum(test['road_boundaries']) + 1 >= MIN_ROAD_WIDTH: # Road lines on both sides
+                count += 1 if test['modern_road_distance'] is not False else .7
         
         non_circularity = Point(lineString.coords[0]).distance(Point(lineString.coords[-1])) / lineString.length
         
-        scores.append(count * non_circularity / len(prox))     
+        scores.append(count * non_circularity / len(test_set))   
+            
+    # Concatenate unique non-False modern road ids
+    modern_road_labels = ['; '.join(set(str(item) for item in row if item)) for row in modern_road_labels]  
            
     # Combine arrays in a GeoDataFrame
     candidate_roads = gpd.GeoDataFrame({'geometry': lineStrings, 'modern_road_id': modern_road_labels, 'score': scores})
 
-    # Now assess connectivity of each candidate road by finding the minimum distance of either of its endpoints to the endpoint of 
-    # any other candidate road which has a score greater than connectivity_score_min.
-    # This method should probably be combined with - or replaced by - some other method which assesses the product of scores and 
-    # lengths of interconnected lines.
     print("Assessing connectivity ...")
     
     '''
