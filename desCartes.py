@@ -213,10 +213,10 @@ def desCartes(map_directory,
     
     def add_to_result_images(label, image):
         if visualise:
-            thumbnail = cv2.resize(image, (200, int(200 * image.shape[0] / image.shape[1])))
+            thumbnail = cv2.resize(image, (200, int(200 * image.shape[0] / image.shape[1])), interpolation=cv2.INTER_CUBIC)
             fullsize_path = map_directory + label.lower().replace(" ", "_") + '.jpg'
             cv2.imwrite(fullsize_path, image)
-            thumbnail_base64 = base64.b64encode(cv2.imencode('.jpg', thumbnail)[1]).decode("utf-8")
+            thumbnail_base64 = base64.b64encode(cv2.imencode('.jpg', thumbnail, [cv2.IMWRITE_JPEG_QUALITY, 80])[1]).decode("utf-8")
             result_images.append({
                 "label": label,
                 "url": fullsize_path,
