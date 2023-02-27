@@ -107,7 +107,7 @@ function showCandidateLines(response) {
 	    var link = document.createElement('a');
 		var directory = response.GeoPackage.substring(0, response.GeoPackage.lastIndexOf('/') + 1);
 	    link.href = '../../git/' + directory + '/images.zip';
-	    link.download = 'images.zip';
+	    link.download = 'desCartes_images.zip';
 	    document.body.appendChild(link);
 	    link.click();
 	    document.body.removeChild(link);
