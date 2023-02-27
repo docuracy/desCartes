@@ -214,12 +214,12 @@ def desCartes(map_directory,
     def add_to_result_images(label, image):
         if visualise:
             thumbnail = cv2.resize(image, (200, int(200 * image.shape[0] / image.shape[1])))
-            fullsize_path = os.path.join(map_directory, 'images', label)
+            fullsize_path = os.path.join(map_directory, 'images', label.lower().replace(" ", "_") + '.jpg')
             cv2.imwrite(fullsize_path, image)
             thumbnail_base64 = base64.b64encode(cv2.imencode('.jpg', thumbnail)[1]).decode("utf-8")
             result_images.append({
                 "label": "Segmented map image",
-                "url": binary_image,
+                "url": fullsize_path,
                 "thumbnail": thumbnail_base64
             })
 
