@@ -16,7 +16,8 @@
       "convexity_min": 0.6,
       "inflation_factor": 4,
       "templating": "True",
-      "maximum_tree_density": 0.1
+      "maximum_tree_density": 0.1,
+	  "dash_detector": {"area": {"mean": 25.34, "std_dev": 4.98}, "convexity": {"mean": 0.9572, "std_dev": 0.0306}, "aspect_ratio": {"mean": 0.5085, "std_dev": 0.1082}}
     },
     {
       "description": "UK OS 1-inch (S7)",
@@ -35,7 +36,8 @@
       "convexity_min": 0.9,
       "inflation_factor": 2.3,
       "templating": "False",
-      "maximum_tree_density": 0.1
+      "maximum_tree_density": 0.1,
+	  "dash_detector": {"area": {"mean": 25.34, "std_dev": 4.98}, "convexity": {"mean": 0.9572, "std_dev": 0.0306}, "aspect_ratio": {"mean": 0.5085, "std_dev": 0.1082}}
     },
     {
       "description": "UK OS Drawings",
@@ -54,7 +56,8 @@
       "convexity_min": 0.9,
       "inflation_factor": 2.3,
       "templating": "False",
-      "maximum_tree_density": 0.1
+      "maximum_tree_density": 0.1,
+	  "dash_detector": {"area": {"mean": 25.34, "std_dev": 4.98}, "convexity": {"mean": 0.9572, "std_dev": 0.0306}, "aspect_ratio": {"mean": 0.5085, "std_dev": 0.1082}}
     },
     {
       "description": "CUSTOM URL",
@@ -73,6 +76,7 @@
       "convexity_min": 0.9,
       "inflation_factor": 2.3,
       "templating": "False",
-      "maximum_tree_density": 0.1
+      "maximum_tree_density": 0.1,
+	  "dash_detector": {"area": {"mean": 25.34, "std_dev": 4.98}, "convexity": {"mean": 0.9572, "std_dev": 0.0306}, "aspect_ratio": {"mean": 0.5085, "std_dev": 0.1082}}
     }
 ]

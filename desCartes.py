@@ -92,6 +92,59 @@ def cut(line, distance): ## https://gist.github.com/sgillies/465156#file_cut.py
             return [
                 LineString(coords[:i] + [(cp.x, cp.y)]),
                 LineString([(cp.x, cp.y)] + coords[i:])]
+    
+def vector_skeleton(skeleton):
+    contours = cv2.findContours(skeleton, cv2.RETR_LIST , cv2.CHAIN_APPROX_NONE)[0]
+    singular_contours = []
+    visited_points = set()
+    endpoints = set()
+    for contour in contours:
+        previouspoint = tuple(contour[0][0])
+        visited_points.add(previouspoint)
+        endpoints.add(previouspoint)
+        current_contour = [[previouspoint]]
+        addingpoints = True
+        for i in range(1, len(contour) - 1):
+            point = tuple(contour[i][0])
+            
+            if addingpoints:
+                if not point in visited_points:
+                    current_contour.append([point])
+                else:
+                    if point in endpoints:
+                        current_contour.append([point]) # Line is returning to a previous junction
+                    else:
+                        endpoints.add(previouspoint) # Line has reversed direction
+                    singular_contours.append(np.array(current_contour))
+                    addingpoints = False
+            else:        
+                if not point in visited_points: 
+                    endpoints.add(previouspoint) # Line has passed a previous junction
+                    current_contour = [[previouspoint], [point]]
+                    addingpoints = True
+                    
+            visited_points.add(point)
+            previouspoint = point
+            
+    ## Break linestrings where they pass through endpoints
+    contour_list = singular_contours.copy()    
+    split_contours = []
+    while contour_list:
+        contour = contour_list.pop(0)
+        divide = False
+        for i in range(1, len(contour) - 1):
+            if tuple(contour[i][0]) in endpoints:
+                divide = True
+                split_contours.append(contour[:i+1])
+                contour_list.insert(0, contour[i:])
+                break
+        if not divide and len(contour) > 1:
+            split_contours.append(contour)
+    
+    lineStrings = []
+    for split_contour in split_contours:
+        lineStrings.append(geometry.LineString(np.array(split_contour).reshape(-1, 2)).simplify(2))
+    return lineStrings
 
 ## TO DO: Investigate why type casting like this causes the server to hang.
 # def desCartes(
@@ -125,6 +178,8 @@ def desCartes(map_directory,
       min_size_factor = 10, # Multiplied by int(MAX_ROAD_WIDTH)^2 to give minimum size for a contour to be considered
       inflation_factor = 2.3, # Multiplied by int(MAX_ROAD_WIDTH) to limit average breadth of a contour perpendicular to its skeleton
       gap_close = 20, # For closing gaps between likely roads
+      score_min = .1,
+      dash_detector = {"area": {"mean": 25.34, "std_dev": 4.98}, "convexity": {"mean": 0.9572, "std_dev": 0.0306}, "aspect_ratio": {"mean": 0.5085, "std_dev": 0.1082}},
       shape_filter = True,
       templating = True,
       template_dir = './data/templates', 
@@ -144,6 +199,8 @@ def desCartes(map_directory,
     min_size_factor = float(min_size_factor)
     inflation_factor = float(inflation_factor)
     gap_close = float(gap_close)
+    score_min = float(score_min)
+    dash_detector = dict(dash_detector)
     shape_filter = bool(shape_filter)
     templating = bool(templating)
     template_dir = str(template_dir) 
@@ -175,7 +232,7 @@ def desCartes(map_directory,
     MIN_SIZE = float(min_size_factor) * float(MAX_ROAD_WIDTH) ** 2
     if binary_image is False:
         blurred_grayscale_image = cv2.medianBlur(grayscale_image, int(blur_size)) 
-        # binary_image = cv2.threshold(grayscale_image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1] # Tends to create gaps in road lines
+        _, binary_image_otsu = cv2.threshold(grayscale_image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU) # Tends to create gaps in road lines
         _, binary_image = cv2.threshold(blurred_grayscale_image, binarization_threshold, 255, cv2.THRESH_BINARY)
     height, width = binary_image.shape[:2]
 
@@ -183,27 +240,67 @@ def desCartes(map_directory,
     if visualise:
         base64_images.append({"label": "Thresholded map image", "image": base64.b64encode(cv2.imencode('.jpg', binary_image)[1]).decode("utf-8")})      
     
-    '''
-    TO DO: Before thinning the image, optionally detect dashed line contours using std_deviation_multiplier, area_range, 
-    convexity_range, and aspect_ratio_range defined in map_defaults.json. Use morphological operations to 
-    generate line contours which might represent footpaths (return these as a separate gpkg). The delete the dash 
-    contours from the binary_image: it is more effective at this stage than merely filtering by size after 
-    thinning the image, and useful for reducing the braiding otherwise evident on the skeletonized candidate roads image.
-    
-    The morphological operations for extracting potential footpaths would be:
-    
-    1. Draw dash contours in white on black
-    2. Dilate to merge dashes and parallel lines
-    3. Skeletonize and then get contours
-    4. Reduce contours to single linestrings (as later in this code).
-    5. Get single-dash lines (potentially footpaths running along solid boundaries) by eroding the dilated image until they disappear, then subtract from the dilated image
-    6. Skeletonize and contour as before. Such contours would align with the dashes rather than the centre of such a footpath.
-    
-    '''
-         
+    # Remove blobs (for example, circular markers from roadways on GB OS maps)
+    params = cv2.SimpleBlobDetector_Params()
+    params.filterByColor =True
+    params.blobColor = 0
+    params.filterByCircularity = True
+    params.maxCircularity = 1
+    params.filterByArea = True
+    params.maxArea = MAX_ROAD_WIDTH ** 2
+    detector = cv2.SimpleBlobDetector_create(params)
+    keypoints = detector.detect(binary_image_otsu) # Have to use otsu thresholding because otherwise blobs merge with road boundary lines
+    for kp in keypoints:
+        x, y = int(kp.pt[0]), int(kp.pt[1])
+        r = int(kp.size / 2) + 2
+        cv2.circle(binary_image, (x, y), r, (255, 255, 255), -1)
+        
+    # Remove dashes (which can cause skeleton braiding), and extract both single- and double-dashed lines to GeoDataFrames
+    std_deviation_multiplier = 3
+    area_range = (dash_detector['area']['mean'] - std_deviation_multiplier * dash_detector['area']['std_dev'], dash_detector['area']['mean'] + std_deviation_multiplier * dash_detector['area']['std_dev'])
+    convexity_range = (dash_detector['convexity']['mean'] - std_deviation_multiplier * dash_detector['convexity']['std_dev'], 1)
+    aspect_ratio_range = (dash_detector['aspect_ratio']['mean'] - std_deviation_multiplier * dash_detector['aspect_ratio']['std_dev'], dash_detector['aspect_ratio']['mean'] + std_deviation_multiplier * dash_detector['aspect_ratio']['std_dev'])
+    contours, _ = cv2.findContours(binary_image_otsu, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    footpaths = np.zeros_like(binary_image)
+    for contour in contours: 
+        # Calculate areas of contour and its convex hull
+        contour_area = cv2.contourArea(contour)
+        if not area_range[0] <= contour_area <= area_range[1]:
+            continue
+        hull = cv2.convexHull(contour)
+        hull_area = cv2.contourArea(hull)
+        convexity = contour_area / hull_area
+        if not convexity_range[0] <= convexity <= convexity_range[1]:
+            continue
+        # Calculate aspect ratio
+        rect = cv2.minAreaRect(contour)
+        rect_width, rect_height = rect[1]
+        if rect_width == 0 or rect_height == 0:
+            continue # Reject contour
+        else:
+            aspect_ratio = min(rect_width, rect_height) / max(rect_width, rect_height)
+        if not aspect_ratio_range[0] <= aspect_ratio <= aspect_ratio_range[1]:
+            continue
+        cv2.drawContours(footpaths, [contour], -1, 255, -1)
+        
+    binary_image = np.where(footpaths == 255, 255, binary_image) # Remove dashes
+    # Dilate to merge double-dash lines    
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (6, 6))
+    footpaths_merged = cv2.dilate(footpaths, kernel, iterations=2)
+    footpaths_double = cv2.erode(footpaths_merged, kernel, iterations=3)
+    footpaths_double = cv2.dilate(footpaths_double, kernel, iterations=4)
+    footpaths_single = cv2.subtract(footpaths_merged, footpaths_double)
+    footpaths_double = skeletonize(footpaths_double / 255.).astype(np.uint8) * 255
+    footpaths_single = skeletonize(footpaths_single / 255.).astype(np.uint8) * 255
+    footpaths_double = vector_skeleton(footpaths_double)
+    footpaths_single = vector_skeleton(footpaths_single)
+    footpaths_double = gpd.GeoDataFrame({'geometry': footpaths_double})
+    footpaths_single = gpd.GeoDataFrame({'geometry': footpaths_single})
+
     # Thin all black lines to 1px
     binary_image = np.invert(binary_image)  
     binary_image = skeletonize(binary_image / 255).astype(np.uint8) * 255
+    
     # Dilate to close small gaps in road outlines    
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (MIN_ROAD_WIDTH, MIN_ROAD_WIDTH))
     # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2,2))
@@ -339,57 +436,8 @@ def desCartes(map_directory,
     
     ## Divide contours (which are coincident loops) into single lines, starting a new line at each junction
     print("Dividing contours ...")
-    contours = cv2.findContours(skeleton, cv2.RETR_LIST , cv2.CHAIN_APPROX_NONE)[0]
-    singular_contours = []
-    visited_points = set()
-    endpoints = set()
-    for contour in contours:
-        
-        previouspoint = tuple(contour[0][0])
-        visited_points.add(previouspoint)
-        endpoints.add(previouspoint)
-        current_contour = [[previouspoint]]
-        addingpoints = True
-        for i in range(1, len(contour) - 1):
-            point = tuple(contour[i][0])
-            
-            if addingpoints:
-                if not point in visited_points:
-                    current_contour.append([point])
-                else:
-                    if point in endpoints:
-                        current_contour.append([point]) # Line is returning to a previous junction
-                    else:
-                        endpoints.add(previouspoint) # Line has reversed direction
-                    singular_contours.append(np.array(current_contour))
-                    addingpoints = False
-            else:        
-                if not point in visited_points: 
-                    endpoints.add(previouspoint) # Line has passed a previous junction
-                    current_contour = [[previouspoint], [point]]
-                    addingpoints = True
-                    
-            visited_points.add(point)
-            previouspoint = point
-            
-    ## Break linestrings where they pass through endpoints
-    contour_list = singular_contours.copy()    
-    split_contours = []
-    while contour_list:
-        contour = contour_list.pop(0)
-        divide = False
-        for i in range(1, len(contour) - 1):
-            if tuple(contour[i][0]) in endpoints:
-                divide = True
-                split_contours.append(contour[:i+1])
-                contour_list.insert(0, contour[i:])
-                break
-        if not divide and len(contour) > 1:
-            split_contours.append(contour)
     
-    lineStrings = []
-    for split_contour in split_contours:
-        lineStrings.append(geometry.LineString(np.array(split_contour).reshape(-1, 2)).simplify(2))
+    lineStrings = vector_skeleton(skeleton)
 
 #####################
 ## VECTOR ANALYSIS ##
@@ -486,6 +534,8 @@ def desCartes(map_directory,
            
     # Combine arrays in a GeoDataFrame
     candidate_roads = gpd.GeoDataFrame({'geometry': lineStrings, 'modern_road_id': modern_road_labels, 'score': scores})
+    candidate_roads = candidate_roads[candidate_roads['score'] >= score_min].reset_index(drop=True) # Remove low-scoring candidate roads
+    print('... ' + str(len(lineStrings)-len(candidate_roads)) + ' low-scoring candidate roads removed.')
 
     print("Assessing connectivity ...")
     
@@ -629,6 +679,11 @@ def desCartes(map_directory,
     road_network_EPSG4326_gdf = XY_to_EPSG4326(road_network_gdf)
     road_network_EPSG4326_gdf['modern_road_id'] = road_network_gdf['modern_road_id'].values
     road_network_EPSG4326_gdf.to_file(map_directory + 'desCartes.gpkg', layer="road_network", driver="GPKG")
+    
+    footpaths_double_EPSG4326_gdf = XY_to_EPSG4326(footpaths_double)
+    footpaths_double_EPSG4326_gdf.to_file(map_directory + 'desCartes.gpkg', layer="double_dashes", driver="GPKG")
+    footpaths_single_EPSG4326_gdf = XY_to_EPSG4326(footpaths_single)
+    footpaths_single_EPSG4326_gdf.to_file(map_directory + 'desCartes.gpkg', layer="single_dashes", driver="GPKG")
      
 ###################
 ## VISUALISATION ##
