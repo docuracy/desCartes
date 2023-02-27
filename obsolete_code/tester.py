@@ -32,17 +32,12 @@ from desCartes import desCartes
 # A simple way to get the extent coordinates is to open a Google map in a browser,
 # then right-click on the south-west corner of the area of interest. Then click on 
 # the displayed coordinates and then paste them below. Repeat for the north-east corner.
-EXTENT_SOUTHWEST_LAT, EXTENT_SOUTHWEST_LNG = 51.46833857638139, -2.34334945678711,
-EXTENT_NORTHEAST_LAT, EXTENT_NORTHEAST_LNG = 51.47372515642006, -2.329788208007813
+EXTENT_SOUTHWEST_LAT, EXTENT_SOUTHWEST_LNG = 51.503658889547154, -2.3480460291266954,
+EXTENT_NORTHEAST_LAT, EXTENT_NORTHEAST_LNG = 51.511886481244275, -2.3301502077128458
 
 ## The location name will be used to name the directory where files are stored.
 ## If a geotiff already exist in this directory, it will be re-used, and the coordinates given above ignored.
-# LOCATION_NAME = 'longborough'
-# LOCATION_NAME = 'longborough-south'
-# LOCATION_NAME = 'marshfield'
-LOCATION_NAME = 'marshfield-2'
-# LOCATION_NAME = 'tolleshunt'
-# LOCATION_NAME = 'hampton'
+LOCATION_NAME = 'tormarton'
 
 ## Uncomment one of these methods, or create your own in the IMAGE PROCESSING CALLS section.
 ## Any name you type here will be used in creating a filename, so avoid funky characters.
