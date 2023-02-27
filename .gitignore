@@ -27,3 +27,12 @@ output/marshfield-2/OS_Open_Roads_no-motorways_EPSG4326.prj
 output/marshfield-2/OS_Open_Roads_no-motorways_EPSG4326.shp
 output/marshfield-2/OS_Open_Roads_no-motorways_EPSG4326.shx
 output/tormarton/desCartes.gpkg
+output/tormarton/predicted_road_network.jpg
+output/tormarton/road_boundary_checks_(with_modern_os_roads).jpg
+output/tormarton/segmented_map_image.jpg
+output/tormarton/skeletonized_candidate_roads.jpg
+output/tormarton/thinned_map_image.jpg
+output/tormarton/desCartes.gpkg
+output/tormarton/thresholded_map_image.jpg
+output/tormarton/desCartes.gpkg
+output/tormarton/desCartes.gpkg

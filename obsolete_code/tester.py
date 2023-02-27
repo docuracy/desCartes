@@ -332,7 +332,7 @@ match METHOD:
         # result_binary, _ = erase_areas(result_binary, raster_image_gray, 3, contours = False, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase white noise
         
     case _: # Default 
-        contours, skeleton, base64_images, vector_json, message = desCartes(OUTPUTDIR, template_dir = './../data/templates', show_images = True, shape_filter = False, MAX_ROAD_WIDTH = 40)
+        contours, skeleton, result_images, message = desCartes(OUTPUTDIR, template_dir = './../data/templates', show_images = True, shape_filter = False, MAX_ROAD_WIDTH = 40)
         
 # Attempt to bridge gaps in skeleton by dilation and re-skeletonization
 # def skeleton_contours(skeleton_binary, gap = 15, step = 1, SHOW_IMAGES = False): # Larger steps run risk of blurring

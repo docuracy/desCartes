@@ -215,11 +215,10 @@ def desCartes(map_directory,
         if visualise:
             thumbnail = cv2.resize(image, (200, int(200 * image.shape[0] / image.shape[1])))
             fullsize_path = map_directory + label.lower().replace(" ", "_") + '.jpg'
-            print('saving',fullsize_path)
             cv2.imwrite(fullsize_path, image)
             thumbnail_base64 = base64.b64encode(cv2.imencode('.jpg', thumbnail)[1]).decode("utf-8")
             result_images.append({
-                "label": "Segmented map image",
+                "label": label,
                 "url": fullsize_path,
                 "thumbnail": thumbnail_base64
             })
@@ -740,6 +739,7 @@ def desCartes(map_directory,
         add_to_result_images("Predicted Road Network", road_network_visualisation)
                 
         if show_images:
+            print(str(len(result_images)) + ' result images saved.')
             print('Showing images ...')
             cv2.imshow("Binary Image", binary_image)
             cv2.imshow('skeleton', skeleton) 
@@ -750,4 +750,5 @@ def desCartes(map_directory,
             cv2.waitKey(0)
     
     print('... completed.')
-    return contours, skeleton, result_images, ''
+    # return contours, skeleton, result_images, ''
+    return contours, skeleton, 'testing', ''
