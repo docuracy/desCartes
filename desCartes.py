@@ -100,14 +100,14 @@ def cut(line, distance): ## https://gist.github.com/sgillies/465156#file_cut.py
     if distance <= 0.0 or distance >= line.length:
         print('No cut made: distance = '+str(distance)+', line length = '+str(line.length)+'.')
         return [LineString(line)], False
-    coords = list(line.coords)
+    coords = list(line.coords)        
     for i, p in enumerate(coords):
         pd = line.project(Point(p))
         if pd == distance:
             return [
                 LineString(coords[:i+1]),
                 LineString(coords[i:])]
-        if pd > distance:
+        if pd > distance or (i == len(coords) - 1 and line.is_closed):
             cp = line.interpolate(distance)
             return [
                 LineString(coords[:i] + [(cp.x, cp.y)]),

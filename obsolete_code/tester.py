@@ -38,12 +38,14 @@ import json
 EXTENT_SOUTHWEST_LAT, EXTENT_SOUTHWEST_LNG = 52.567900, -1.990716
 EXTENT_NORTHEAST_LAT, EXTENT_NORTHEAST_LNG = 52.588912, -1.957963
 
+EXTENT_SOUTHWEST_LNG, EXTENT_SOUTHWEST_LAT, EXTENT_NORTHEAST_LNG, EXTENT_NORTHEAST_LAT = -1.935997009277344,52.56137658013496,-1.898918151855469,52.58339467314521
+
 ## The location name will be used to name the directory where files are stored.
 ## If a geotiff already exist in this directory, it will be re-used, and the coordinates given above ignored.
-# LOCATION_NAME = 'test'
+LOCATION_NAME = 'test3'
 # LOCATION_NAME = 'test2'
 # LOCATION_NAME = 'tormarton'
-LOCATION_NAME = 'walsall'
+# LOCATION_NAME = 'walsall'
 # LOCATION_NAME = 'sutton_coldfield'
 
 ## Uncomment one of these methods, or create your own in the IMAGE PROCESSING CALLS section.
@@ -346,7 +348,7 @@ match METHOD:
     #         )
     #
     case 'colour':
-        contours, skeleton, result_images, message = coloured_roads(raster_image, OUTPUTDIR, raster.transform, colours = json.dumps(colours), visualise = True)
+        contours, skeleton, result_images, message = coloured_roads(raster_image, OUTPUTDIR, raster.transform, colours = json.dumps(colours), visualise = True, show_images = True)
     
     case 'progressive':
         result_binary, _ = erase_areas(result_binary, raster_image_gray, MAX_ROAD_WIDTH ** 2, contours = False, dashes = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Attempts to extend dashed lines
