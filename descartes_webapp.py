@@ -91,6 +91,5 @@ def get_desCartes():
             
     except Exception as e:
         logger.error("Error: %s", e, exc_info=True)
-        tb = sys.exc_info()[2]
-        return jsonify({"error": f"Error: {e}, line: {tb.tb_lineno}"})
+        return jsonify({"error": f"Error: {e}, line: {sys.exc_info()[2].tb_lineno}, function: {sys._getframe().f_code.co_name}"})
 

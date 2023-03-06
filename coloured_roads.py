@@ -367,6 +367,7 @@ def coloured_roads(image, map_directory, transform, colours, visualise = False):
     
     for colour_info in colours:
         
+        print(colour_info)
         print(f'Processing {colour_info["name"]}')
         
         # Extract the mean and std deviation of the LAB values for the current colour
