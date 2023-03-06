@@ -18,7 +18,8 @@ DATADIR = './data/'
 app = Flask(__name__)
 app.logger.setLevel(logging.INFO)
 handler = RotatingFileHandler('desCartes.log', maxBytes=100000, backupCount=10)
-handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
+handler.setFormatter(formatter)
 app.logger.addHandler(handler)
 
 @app.route("/", methods=['POST'])
