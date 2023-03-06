@@ -130,7 +130,7 @@ $(document).ready(function() {
         var bounds = rect.getBounds();
 		formData.append('bounds', bounds.getSouthWest().lng + "," + bounds.getSouthWest().lat + "," + bounds.getNorthEast().lng + "," + bounds.getNorthEast().lat);
 		formData.append('viewID', viewID());
-		formData.append('colours', JSON.stringify(defaultValues[selectedIndex].colours));
+		if ('colours' in defaultValues[selectedIndex]) formData.append('colours', JSON.stringify(defaultValues[selectedIndex].colours));
 		$.ajax({
             type: "POST",
             timeout: 60000, // set a 1-minute timeout in milliseconds
