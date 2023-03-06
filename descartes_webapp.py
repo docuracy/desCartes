@@ -4,6 +4,7 @@
 '''
 
 import logging
+from logging.handlers import RotatingFileHandler
 from flask import Flask, request, jsonify
 import os
 import shutil
@@ -15,6 +16,10 @@ from desCartes import desCartes
 DATADIR = './data/'
 
 app = Flask(__name__)
+app.logger.setLevel(logging.INFO)
+handler = RotatingFileHandler('desCartes.log', maxBytes=100000, backupCount=10)
+handler.setLevel(logging.INFO)
+app.logger.addHandler(handler)
 
 @app.route("/", methods=['POST'])
 def get_desCartes():
