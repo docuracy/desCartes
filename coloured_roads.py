@@ -8,6 +8,7 @@ from skimage.morphology import skeletonize
 import os
 import sys
 import ast
+import json
 import geopandas as gpd
 from shapely.geometry import MultiPoint, Point, LineString
 from utilities import unit_vector
@@ -345,6 +346,8 @@ def patch_gdf(gdf, image_shape = False, tolerance=20, snap_to_line = False): # I
     return gdf
 
 def coloured_roads(image, map_directory, transform, colours, visualise = False):
+    
+    colours = json.loads(colours)
     
     scale = 4 # For scaling between different map tilesets, one at zoom=17, the other at zoom=15
     # scale = 1 # FOR TESTING ***************************
