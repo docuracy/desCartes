@@ -49,11 +49,11 @@ def result_image(visualise, map_directory, label, image):
             }
         
 def zip_files(map_directory, filetype = '.jpg', filename = 'images.zip'):
-    zip_files = [os.path.join(map_directory, f) for f in os.listdir(map_directory) if f.endswith(filetype)]
+    jpg_files = [os.path.join(map_directory, f) for f in os.listdir(map_directory) if f.endswith(filetype)]
     zip_path = os.path.join(map_directory, filename)
     with zipfile.ZipFile(zip_path, 'w') as zip_file:
-        for zip_file in zip_files:
-            zip_file.write(zip_file, os.path.basename(zip_file))
+        for jpg_file in jpg_files:
+            zip_file.write(jpg_file, os.path.basename(jpg_file))
     
 def XY_to_EPSG4326(raster_gdf, raster_transform):
     transformed_coordinates = [transform(lambda x, y: rasterio.transform.xy(raster_transform, y, x), row.geometry) for _, row in raster_gdf.iterrows()]
