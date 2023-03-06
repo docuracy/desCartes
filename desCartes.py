@@ -242,11 +242,11 @@ def desCartes(map_directory,
         raster_image = raster.read()
         
     ### TESTING
-    return False, False, False, False   
+    # return False, False, False, False   
      
     if not colours == False: # Tile source is not GB OS at zoom level 17 (based on size of X-pixel)
         from coloured_roads import coloured_roads
-        return coloured_roads(raster_image, map_directory, transform = raster.transform, colours)
+        return coloured_roads(raster_image, map_directory, raster.transform, colours)
     
     modern_roads_EPSG4326, modern_roads = transform_linestrings(map_directory, raster.transform)
     modern_roads_sindex = modern_roads.sindex

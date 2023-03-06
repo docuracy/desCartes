@@ -5,6 +5,7 @@ THIS IS OBSOLETE CODE USED ONLY FOR TESTING AND DEVELOPMENT PURPOSES
 
 '''
 import os
+import sys
 import rasterio
 import numpy as np
 import cv2
@@ -24,6 +25,7 @@ from obsolete_code.image_processing import skeleton_contours, erase_matches, era
 import base64
 # from find_areas import find_areas
 from desCartes import desCartes
+from coloured_roads import coloured_roads
 
 #####################
 ## USER VARIABLES  ##
@@ -32,25 +34,30 @@ from desCartes import desCartes
 # A simple way to get the extent coordinates is to open a Google map in a browser,
 # then right-click on the south-west corner of the area of interest. Then click on 
 # the displayed coordinates and then paste them below. Repeat for the north-east corner.
-EXTENT_SOUTHWEST_LAT, EXTENT_SOUTHWEST_LNG = 51.503658889547154, -2.3480460291266954,
-EXTENT_NORTHEAST_LAT, EXTENT_NORTHEAST_LNG = 51.511886481244275, -2.3301502077128458
+EXTENT_SOUTHWEST_LAT, EXTENT_SOUTHWEST_LNG = 52.567900, -1.990716
+EXTENT_NORTHEAST_LAT, EXTENT_NORTHEAST_LNG = 52.588912, -1.957963
 
 ## The location name will be used to name the directory where files are stored.
 ## If a geotiff already exist in this directory, it will be re-used, and the coordinates given above ignored.
-LOCATION_NAME = 'tormarton'
+# LOCATION_NAME = 'test'
+LOCATION_NAME = 'test2'
+# LOCATION_NAME = 'tormarton'
+# LOCATION_NAME = 'walsall'
+# LOCATION_NAME = 'sutton_coldfield'
 
 ## Uncomment one of these methods, or create your own in the IMAGE PROCESSING CALLS section.
 ## Any name you type here will be used in creating a filename, so avoid funky characters.
 # METHOD = 'road_contours'
 # METHOD = 'progressive'
-METHOD = 'development'
+# METHOD = 'development'
+METHOD = 'colour'
 
-RASTER_TILE_KEY = 'ySlCyGP2kmmfm9Dgtiqj' # TO USE THE URL GIVEN BELOW, GET YOUR OWN KEY FROM https://cloud.maptiler.com/account/keys/
-RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb10k1888/{z}/{x}/{y}.jpg?key=' + RASTER_TILE_KEY
-# RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb63k1955/{z}/{x}/{y}.jpg?key=ySlCyGP2kmmfm9Dgtiqj'
-RASTER_TILE_ZOOM = 17
+# RASTER_TILE_KEY = 'ySlCyGP2kmmfm9Dgtiqj' # TO USE THE URL GIVEN BELOW, GET YOUR OWN KEY FROM https://cloud.maptiler.com/account/keys/
+# RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb10k1888/{z}/{x}/{y}.jpg?key=' + RASTER_TILE_KEY
+RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb63k1955/{z}/{x}/{y}.jpg?key=ySlCyGP2kmmfm9Dgtiqj'
+# RASTER_TILE_ZOOM = 17
 # RASTER_TILE_URL = 'https://overlays.humap.site/layersoflondon/os_drawings/{z}/{x}/{y}.png'
-# RASTER_TILE_ZOOM = 15
+RASTER_TILE_ZOOM = 15
 
 ## The ROADFILE must contain LineStrings only, reprojected if necessary to EPSG:4326 (WGS84)
 ## It should be placed in the DATADIR defined below.
@@ -70,6 +77,28 @@ MATCH_SCORE = .4 # Minimum pass score for structural_similarity in LineString fi
 FILTER_SCORE = 20 # Reject road candidates failing to meet this minimum score
 
 SHOW_IMAGES = True
+
+colours = [
+            {"name": "red", "label": "road_first_class", 
+                "kernel": {"close": 0, "open": 6, "reclose": 16},
+                "gap_close": 50, "bgr_colour": [74, 101, 207], 
+                "lab_colour": {"mean": [0.583, 0.685, 0.664], "std": [0.016, 0.012, 0.012], "confidence": 8.0},
+                "shapes": [
+                    {"type": "station", "area": 400, "convexity": 1, "aspect_ratio": 0.5, "tolerance": 0.2}
+                    ]},
+            {"name": "buff", "label": "road_second_class", 
+                "kernel": {"close": 6, "open": 4, "reclose": 16}, 
+                "gap_close": 80, "bgr_colour": [92, 122, 172], 
+                "lab_colour": {"mean": [0.568, 0.567, 0.642], "std": [0.017 , 0.007, 0.009], "confidence": 7.0},
+                "shapes": [
+                    ]}, 
+            {"name": "yellow", "label": "road_third_class", 
+                "kernel": {"close": 6, "open": 4, "reclose": 6}, 
+                "gap_close": 40, "bgr_colour": [91, 205, 220], 
+                "lab_colour": {"mean": [0.843, 0.482, 0.757], "std": [0.016, 0.006, 0.011], "confidence": 8.0},
+                "shapes": [
+                    ]}
+        ]
 
 ######################
 ## SYSTEM VARIABLES ##
@@ -95,6 +124,11 @@ else:
 # Open the geotiff using rasterio
 with rasterio.open(mapfile) as raster:
     raster_image = raster.read()
+    # transform = raster.transform
+    # pixel_size_x = transform[0]
+    # pixel_size_y = transform[4]
+    # print(f"Pixel size (X,Y): {pixel_size_x}, {pixel_size_y}")
+    # sys.exit()
     
 raster_image_gray = cv2.cvtColor(cv2.merge(raster_image[:3]), cv2.COLOR_BGR2GRAY)
 ## TO DO: detect and set threshold programmatically
@@ -310,6 +344,9 @@ match METHOD:
     #         OUTPUTDIR = OUTPUTDIR
     #         )
     #
+    case 'colour':
+        contours, skeleton, result_images, message = coloured_roads(raster_image, OUTPUTDIR, raster.transform, colours = colours, visualise = True)
+    
     case 'progressive':
         result_binary, _ = erase_areas(result_binary, raster_image_gray, MAX_ROAD_WIDTH ** 2, contours = False, dashes = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Attempts to extend dashed lines
         
