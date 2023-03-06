@@ -53,7 +53,7 @@ sys.stderr = PrintToLogger(logger, logging.ERROR)
 @app.route("/", methods=['POST'])
 def get_desCartes():
     try:
-        logger.info("Starting get_desCartes function")
+        print("Starting get_desCartes function")
         
         args = {k: v for k, v in request.form.items() if k not in ['viewID', 'bounds', 'url', 'zoom', 'modern_roads', 'default_values_dropdown']}
         bounds = request.form.get('bounds')
@@ -90,7 +90,7 @@ def get_desCartes():
             return jsonify({"message": "No bounds found in the request."})
             
     except Exception as e:
+        logger.error("Error: %s", e, exc_info=True)
         tb = sys.exc_info()[2]
-        logger.error(f"Error: {e}, line: {tb.tb_lineno}")
         return jsonify({"error": f"Error: {e}, line: {tb.tb_lineno}"})
 
