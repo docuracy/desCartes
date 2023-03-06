@@ -241,6 +241,9 @@ def desCartes(map_directory,
     with rasterio.open(map_directory + 'geo.tiff') as raster:
         raster_image = raster.read()
         
+    ### TESTING
+    return False, False, False, False   
+     
     if not colours == False: # Tile source is not GB OS at zoom level 17 (based on size of X-pixel)
         from coloured_roads import coloured_roads
         return coloured_roads(raster_image, map_directory, transform = raster.transform, colours)
