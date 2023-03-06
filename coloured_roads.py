@@ -12,7 +12,7 @@ import json
 import geopandas as gpd
 from shapely.geometry import MultiPoint, Point, LineString
 from utilities import unit_vector
-from desCartes import vector_skeleton, cut, result_image, XY_to_EPSG4326
+from desCartes import vector_skeleton, cut, result_image, XY_to_EPSG4326, zip_files
 
 def snap_endpoints(gdf, tolerance):
     endpoints, _, _, endpoint_dictionary = endpoint_connectivity(gdf, full_dictionary = True)
@@ -68,11 +68,12 @@ def endpoint_connectivity(gdf, shape = False, margin = 5, full_dictionary = Fals
                 if not full_dictionary == False:
                     endpoint_dictionary[tuple(endpoint)].append([i, j])
     unconnected_endpoints = endpoints - connected_endpoints
-    # for endpoint in connected_endpoints:
-    #     del endpoint_dictionary[tuple(endpoint)]
+    if full_dictionary == False:
+        for endpoint in connected_endpoints:
+            del endpoint_dictionary[tuple(endpoint)]
     return endpoints, connected_endpoints, unconnected_endpoints, endpoint_dictionary
 
-def patch_vector_skeleton(gdf, image_shape, simplify = 1, tolerance = 10, discard = 3, discard_only = False, reskeletonize = False, visualise = True):
+def patch_vector_skeleton(gdf, image_shape, simplify = 1, tolerance = 10, discard = 3, discard_only = False, reskeletonize = False, visualise = True, show_images = False):
     
     # Find unconnected endpoints
     _, _, unconnected_endpoints, endpoint_dictionary = endpoint_connectivity(gdf, image_shape)
@@ -457,7 +458,7 @@ def coloured_roads(image, map_directory, transform, colours, visualise = True, s
             cv2.imshow('vector_skeleton', skeleton_2)
         
         linestring_gdf = gpd.GeoDataFrame(geometry = lineStrings)
-        # linestring_gdf = patch_vector_skeleton(linestring_gdf, image.shape, simplify = 1, discard = 10, tolerance = colour_info['gap_close'], reskeletonize = True)        
+        # linestring_gdf = patch_vector_skeleton(linestring_gdf, image.shape, simplify = 1, discard = 10, tolerance = colour_info['gap_close'], reskeletonize = True, show_images = show_images)        
         # linestring_gdf = patch_gdf(linestring_gdf, tolerance = colour_info['gap_close'])
         
         if visualise:  
@@ -479,7 +480,7 @@ def coloured_roads(image, map_directory, transform, colours, visualise = True, s
     result_images.append(result_image(visualise, map_directory, "Extracted roads", vector_bgr))
     roads = gpd.GeoDataFrame.from_records(vectors)
     roads = snap_endpoints(roads, 10)
-    roads = patch_vector_skeleton(roads, image.shape, simplify = 1, discard = 8, discard_only = True, tolerance = 30, reskeletonize = False)
+    roads = patch_vector_skeleton(roads, image.shape, simplify = 1, discard = 8, discard_only = True, tolerance = 30, reskeletonize = False, show_images = show_images)
     roads = patch_gdf(roads, image_shape = image.shape, tolerance = 100, snap_to_line = True)
     roads = snap_endpoints(roads, 10)
         
@@ -493,6 +494,8 @@ def coloured_roads(image, map_directory, transform, colours, visualise = True, s
             coords = coords.astype(np.int32).reshape(-1, 1, 2)
             cv2.polylines(final_bgr, [coords], isClosed=False, color=ast.literal_eval(lineString.colour), thickness=2)
         result_images.append(result_image(visualise, map_directory, "Patched roads", final_bgr))
+        
+        zip_files(map_directory, '.jpg', 'images.zip')
             
         if show_images:
             cv2.imshow('mask_bgr', mask_bgr)

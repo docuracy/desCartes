@@ -47,6 +47,13 @@ def result_image(visualise, map_directory, label, image):
             "url": fullsize_path,
             "thumbnail": thumbnail_base64
             }
+        
+def zip_files(map_directory, filetype = '.jpg', filename = 'images.zip'):
+    zip_files = [os.path.join(map_directory, f) for f in os.listdir(map_directory) if f.endswith(filetype)]
+    zip_path = os.path.join(map_directory, filename)
+    with zipfile.ZipFile(zip_path, 'w') as zip_file:
+        for zip_file in zip_files:
+            zip_file.write(zip_file, os.path.basename(zip_file))
     
 def XY_to_EPSG4326(raster_gdf, raster_transform):
     transformed_coordinates = [transform(lambda x, y: rasterio.transform.xy(raster_transform, y, x), row.geometry) for _, row in raster_gdf.iterrows()]
@@ -754,12 +761,8 @@ def desCartes(map_directory,
         road_network_visualisation = cv2.cvtColor(grayscale_image, cv2.COLOR_GRAY2BGR)
         road_network_visualisation = draw_linestrings_on_image(road_network_visualisation, road_network_gdf, (0, 0, 255, 255), 2)
         result_images.append(result_image(visualise, map_directory, "Predicted Road Network", road_network_visualisation))
-        
-        jpg_files = [os.path.join(map_directory, f) for f in os.listdir(map_directory) if f.endswith('.jpg')]
-        zip_path = os.path.join(map_directory, 'images.zip')
-        with zipfile.ZipFile(zip_path, 'w') as zip_file:
-            for jpg_file in jpg_files:
-                zip_file.write(jpg_file, os.path.basename(jpg_file))
+                    
+        zip_files(map_directory, '.jpg', 'images.zip')
                 
         if show_images:
             print(str(len(result_images)) + ' result images saved.')
