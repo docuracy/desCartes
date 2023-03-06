@@ -217,7 +217,7 @@ def desCartes(map_directory,
       ):
     
     binary_image = bool(binary_image)
-    colours = list(colours)
+    # colours = list(colours)
     blur_size = int(blur_size)
     binarization_threshold = int(binarization_threshold)
     MAX_ROAD_WIDTH = float(MAX_ROAD_WIDTH) 
