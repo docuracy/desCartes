@@ -124,7 +124,7 @@ def patch_vector_skeleton(gdf, image_shape, simplify = 1, tolerance = 10, discar
         coords = np.round(coords).astype(int)
         cv2.polylines(patched_image, [coords], isClosed=False, color=255, thickness=1)
     test_image = patched_image.copy()
-    if visualise:
+    if show_images:
         cv2.imshow('trimmed_linestrings', test_image)
         # cv2.waitKey(0)
     
@@ -202,7 +202,7 @@ def patch_vector_skeleton(gdf, image_shape, simplify = 1, tolerance = 10, discar
                     # Concatenate the original DataFrame with the two new rows
                     gdf = gpd.pd.concat([gdf.drop(i), new_row1, new_row2], ignore_index=True)
                 
-    if visualise:
+    if show_images:
         cv2.imshow('Test Image', test_image)
         cv2.imshow('patched_image', patched_image)
         # cv2.waitKey(0)
@@ -345,7 +345,7 @@ def patch_gdf(gdf, image_shape = False, tolerance=20, snap_to_line = False): # I
         
     return gdf
 
-def coloured_roads(image, map_directory, transform, colours, visualise = False):
+def coloured_roads(image, map_directory, transform, colours, visualise = True, show_images = False):
     
     colours = json.loads(colours)
     
@@ -359,7 +359,7 @@ def coloured_roads(image, map_directory, transform, colours, visualise = False):
     lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB) # Convert image to LAB colour space
     mask_accumulator = np.zeros((lab.shape[0], lab.shape[1]), dtype=np.uint8)
     
-    if visualise:
+    if show_images:
         cv2.imshow('image', image)
     
     # Create masks for visualization purposes
@@ -383,7 +383,7 @@ def coloured_roads(image, map_directory, transform, colours, visualise = False):
                     & (lab[:, :, 2] >= mean_b * 255 - colour_info['lab_colour']['confidence'] * std_b * 255) & (lab[:, :, 2] <= mean_b * 255 + colour_info['lab_colour']['confidence'] * std_b * 255)
         
         mask_bgr[colour_mask] = colour_info['bgr_colour'] # Visualisation of extracted colours
-        if visualise:
+        if show_images:
             cv2.imshow('mask_bgr', mask_bgr)
             
         closed_mask = np.where(colour_mask, 255, 0).astype(np.uint8)
@@ -425,17 +425,17 @@ def coloured_roads(image, map_directory, transform, colours, visualise = False):
         if colour_info['kernel']['close'] > 0:
             kernel_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (colour_info['kernel']['close'], colour_info['kernel']['close']))
             closed_mask = cv2.morphologyEx(closed_mask, cv2.MORPH_CLOSE, kernel_close) # Try to close holes
-            if visualise:
+            if show_images:
                 cv2.imshow('closed_mask', closed_mask)
         if colour_info['kernel']['open'] > 0:
             kernel_open = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (colour_info['kernel']['open'], colour_info['kernel']['open']))
             closed_mask = cv2.morphologyEx(closed_mask, cv2.MORPH_OPEN, kernel_open) # Try to remove thin lines (including contours in the case of buff lines
-            if visualise:
+            if show_images:
                 cv2.imshow('opened_mask', closed_mask)
         if colour_info['kernel']['reclose'] > 0:
             kernel_reclose = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (colour_info['kernel']['reclose'], colour_info['kernel']['reclose']))
             closed_mask = cv2.morphologyEx(closed_mask, cv2.MORPH_CLOSE, kernel_reclose) # Try to close holes
-            if visualise:
+            if show_images:
                 cv2.imshow('re-closed_mask', closed_mask)
         
         # Exclude previously selected pixels (red lines may have edges interpreted as brown)
@@ -443,12 +443,12 @@ def coloured_roads(image, map_directory, transform, colours, visualise = False):
         mask_accumulator = np.where(closed_mask, 255, mask_accumulator).astype(np.uint8)
         
         skeleton = (skeletonize(closed_mask > 0) * 255).astype(np.uint8)
-        if visualise:
+        if show_images:
             cv2.imshow('skeleton_1', skeleton)
             
         lineStrings = vector_skeleton(skeleton, simplify = 0, discard_length = 10, discard_max_points = 2)
         
-        if visualise:  
+        if show_images:  
             skeleton_2 = np.zeros((lab.shape[0], lab.shape[1]), dtype=np.uint8)
             for lineString in lineStrings:
                 coords = np.array(lineString.coords)
@@ -465,7 +465,8 @@ def coloured_roads(image, map_directory, transform, colours, visualise = False):
                 coords = np.array(lineString.geometry.coords)
                 coords = coords.astype(np.int32).reshape(-1, 1, 2)
                 cv2.polylines(vector_bgr, [coords], isClosed=False, color=colour_info['bgr_colour'], thickness=1)
-            cv2.imshow('vector_bgr', vector_bgr)
+            if show_images:
+                cv2.imshow('vector_bgr', vector_bgr)
         
         # print(unconnected_endpoints)
         # cv2.waitKey(0)
@@ -491,11 +492,12 @@ def coloured_roads(image, map_directory, transform, colours, visualise = False):
             coords = np.array(lineString.geometry.coords)
             coords = coords.astype(np.int32).reshape(-1, 1, 2)
             cv2.polylines(final_bgr, [coords], isClosed=False, color=ast.literal_eval(lineString.colour), thickness=2)
-            
-        cv2.imshow('mask_bgr', mask_bgr)
-        cv2.imshow('final_bgr', final_bgr)
-        cv2.waitKey(0)
         result_images.append(result_image(visualise, map_directory, "Patched roads", final_bgr))
+            
+        if show_images:
+            cv2.imshow('mask_bgr', mask_bgr)
+            cv2.imshow('final_bgr', final_bgr)
+            cv2.waitKey(0)
     
     # Scale x4 to account for different zoom levels of OS map series
     roads = gpd.GeoDataFrame.from_records([{ \

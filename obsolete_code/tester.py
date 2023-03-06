@@ -26,6 +26,7 @@ import base64
 # from find_areas import find_areas
 from desCartes import desCartes
 from coloured_roads import coloured_roads
+import json
 
 #####################
 ## USER VARIABLES  ##
@@ -40,9 +41,9 @@ EXTENT_NORTHEAST_LAT, EXTENT_NORTHEAST_LNG = 52.588912, -1.957963
 ## The location name will be used to name the directory where files are stored.
 ## If a geotiff already exist in this directory, it will be re-used, and the coordinates given above ignored.
 # LOCATION_NAME = 'test'
-LOCATION_NAME = 'test2'
+# LOCATION_NAME = 'test2'
 # LOCATION_NAME = 'tormarton'
-# LOCATION_NAME = 'walsall'
+LOCATION_NAME = 'walsall'
 # LOCATION_NAME = 'sutton_coldfield'
 
 ## Uncomment one of these methods, or create your own in the IMAGE PROCESSING CALLS section.
@@ -345,7 +346,7 @@ match METHOD:
     #         )
     #
     case 'colour':
-        contours, skeleton, result_images, message = coloured_roads(raster_image, OUTPUTDIR, raster.transform, colours = colours, visualise = True)
+        contours, skeleton, result_images, message = coloured_roads(raster_image, OUTPUTDIR, raster.transform, colours = json.dumps(colours), visualise = True)
     
     case 'progressive':
         result_binary, _ = erase_areas(result_binary, raster_image_gray, MAX_ROAD_WIDTH ** 2, contours = False, dashes = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Attempts to extend dashed lines
