@@ -3,7 +3,7 @@
 //
 
 // Maximum allowed area of the selection rectangle in square kilometers
-const MAX_ALLOWED_AREA = 10;
+var max_allowed_area = 10;
 
 var getViewID = true;
 function viewID(){
@@ -28,8 +28,8 @@ function spinner(toggle = true) {
 function updateButton(rect) {
     var bounds = rect.getBounds();
     var area = calculateRectangleArea(bounds);
-    $("#send").prop("disabled", area > MAX_ALLOWED_AREA);
-    $("#send").text((area > MAX_ALLOWED_AREA ? "Area Too Large" : "Start Processing") + " [" + area + " km²]");
+    $("#send").prop("disabled", area > max_allowed_area);
+    $("#send").text((area > max_allowed_area ? "Area Too Large" : "Start Processing") + " [" + area + " km²]");
 }
 
 // Function to calculate the area of a rectangle in square kilometers
@@ -130,6 +130,7 @@ $(document).ready(function() {
         var bounds = rect.getBounds();
 		formData.append('bounds', bounds.getSouthWest().lng + "," + bounds.getSouthWest().lat + "," + bounds.getNorthEast().lng + "," + bounds.getNorthEast().lat);
 		formData.append('viewID', viewID());
+		formData.append('colours', JSON.stringify(defaultValues[selectedIndex].colours));
 		$.ajax({
             type: "POST",
             timeout: 60000, // set a 1-minute timeout in milliseconds
@@ -225,20 +226,11 @@ $(document).ready(function() {
   
 	function populateForm() { // with the default values from the JSON
 	    const defaults = defaultValues[selectedIndex];
-	    $('#blur_size').val(defaults.blur_size);
-	    $('#binarization_threshold').val(defaults.binarization_threshold);
-	    $('#MAX_ROAD_WIDTH').val(defaults.MAX_ROAD_WIDTH);
-	    $('#MIN_ROAD_WIDTH').val(defaults.MIN_ROAD_WIDTH);
-	    $('#convexity_min').val(defaults.convexity_min);
-	    $('#min_size_factor').val(defaults.min_size_factor);
-	    $('#inflation_factor').val(defaults.inflation_factor);
-	    $('#gap_close').val(defaults.gap_close);
-	    $('#templating').val(defaults.templating);
-	    $('#shape_filter').val(defaults.shape_filter);
-	    $('#maximum_tree_density').val(defaults.maximum_tree_density);
-	    $('#url').val(defaults.url);
-	    $('#zoom').val(defaults.zoom);
-	    $('#modern_roads').val(defaults.modern_roads);
+		max_allowed_area = defaults.max_allowed_area;
+
+		const inputs = ['blur_size', 'binarization_threshold', 'MAX_ROAD_WIDTH', 'MIN_ROAD_WIDTH', 'convexity_min', 'min_size_factor', 'inflation_factor', 'gap_close', 'templating', 'shape_filter', 'maximum_tree_density', 'url', 'zoom', 'modern_roads']
+	    for (let property of inputs) {
+		  $(`#${property}`).val(defaults[property]).prop('disabled', !defaults.hasOwnProperty(property))};
 
 		$("#shape_filter_parameters").toggle($("#shape_filter").val() == "True");
 	
@@ -252,9 +244,7 @@ $(document).ready(function() {
 	    var bounds = rect.getBounds();
 	    map.fitBounds(bounds);
 	    rect.editing.enable();
-	    $("#instructions span").text(function(i, text) {
-	        return text.replace("***", MAX_ALLOWED_AREA);
-	    });
+	    $("#instructions span#max_allowed_area").text(max_allowed_area);
 	    updateButton(rect);
 	    rect.on('edit', function() {
 			getViewID = true;

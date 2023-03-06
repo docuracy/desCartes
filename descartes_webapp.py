@@ -11,7 +11,6 @@ import datetime
 from tiles_to_tiff import create_geotiff
 from extract_modern_roads import extract_modern_roads
 from desCartes import desCartes
-import re
 
 DATADIR = './data/'
 

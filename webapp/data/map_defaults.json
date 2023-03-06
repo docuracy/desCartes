@@ -6,6 +6,7 @@
 	  "zoom": 17,
 	  "modern_roads": "OS_Open_Roads_no-motorways_EPSG4326.gpkg",
 	  "start_extent": [[51.50083068350566, -2.351390649563276], [51.51321498717301, -2.3244272838851536]],
+	  "max_allowed_area": 10,
       "blur_size": 3,
       "binarization_threshold": 210,
       "MAX_ROAD_WIDTH": 34,
@@ -25,19 +26,30 @@
       "url": "https://api.maptiler.com/tiles/uk-osgb63k1955/{z}/{x}/{y}.jpg?key=ySlCyGP2kmmfm9Dgtiqj",
 	  "zoom": 15,
 	  "modern_roads": "OS_Open_Roads_no-motorways_EPSG4326.gpkg",
-	  "start_extent": [[51.50083068350566, -2.351390649563276], [51.51321498717301, -2.3244272838851536]],
-      "blur_size": 1,
-      "binarization_threshold": 170,
-      "MAX_ROAD_WIDTH": 10,
-      "MIN_ROAD_WIDTH": 3,
-      "min_size_factor": 7,
+	  "start_extent": [[52.56769058443528, -1.991100311279297], [52.59026318580743, -1.9585977391752192]],
+	  "max_allowed_area": 40,
       "gap_close": 10,
-	  "shape_filter": "True",
-      "convexity_min": 0.9,
-      "inflation_factor": 2.3,
-      "templating": "False",
-      "maximum_tree_density": 0.1,
-	  "dash_detector": {"area": {"mean": 25.34, "std_dev": 4.98}, "convexity": {"mean": 0.9572, "std_dev": 0.0306}, "aspect_ratio": {"mean": 0.5085, "std_dev": 0.1082}}
+	  "colours": [
+	        {"name": "red", "label": "road_first_class", 
+	            "kernel": {"close": 0, "open": 6, "reclose": 16},
+	            "gap_close": 50, "bgr_colour": [74, 101, 207], 
+	            "lab_colour": {"mean": [0.583, 0.685, 0.664], "std": [0.016, 0.012, 0.012], "confidence": 8.0},
+	            "shapes": [
+	                {"type": "station", "area": 400, "convexity": 1, "aspect_ratio": 0.5, "tolerance": 0.2}
+	                ]},
+	        {"name": "buff", "label": "road_second_class", 
+	            "kernel": {"close": 6, "open": 4, "reclose": 16}, 
+	            "gap_close": 80, "bgr_colour": [92, 122, 172], 
+	            "lab_colour": {"mean": [0.568, 0.567, 0.642], "std": [0.017 , 0.007, 0.009], "confidence": 7.0},
+	            "shapes": [
+	                ]}, 
+	        {"name": "yellow", "label": "road_third_class", 
+	            "kernel": {"close": 6, "open": 4, "reclose": 6}, 
+	            "gap_close": 40, "bgr_colour": [91, 205, 220], 
+	            "lab_colour": {"mean": [0.843, 0.482, 0.757], "std": [0.016, 0.006, 0.011], "confidence": 8.0},
+	            "shapes": [
+	                ]}
+    	]
     },
     {
       "description": "UK OS Drawings",
@@ -46,6 +58,7 @@
 	  "zoom": 15,
 	  "modern_roads": "OS_Open_Roads_no-motorways_EPSG4326.gpkg",
 	  "start_extent": [[51.41341487745755, -0.3813548954795963], [51.42733151852389, -0.3611825283458425]],
+	  "max_allowed_area": 40,
       "blur_size": 3,
       "binarization_threshold": 210,
       "MAX_ROAD_WIDTH": 20,
@@ -66,6 +79,7 @@
 	  "zoom": 15,
 	  "modern_roads": "OS_Open_Roads_no-motorways_EPSG4326.gpkg",
 	  "start_extent": [[51.41341487745755, -0.3813548954795963], [51.42733151852389, -0.3611825283458425]],
+	  "max_allowed_area": 40,
       "blur_size": 3,
       "binarization_threshold": 210,
       "MAX_ROAD_WIDTH": 20,

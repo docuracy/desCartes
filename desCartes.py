@@ -35,6 +35,24 @@ from extract_modern_roads import transform_linestrings
 import networkx as nx
 from sklearn.cluster import KMeans
 # import matplotlib.pyplot as plt # Required only for elbow test
+    
+def result_image(visualise, map_directory, label, image):
+    if visualise:
+        thumbnail = cv2.resize(image, (200, int(200 * image.shape[0] / image.shape[1])), interpolation=cv2.INTER_CUBIC)
+        fullsize_path = map_directory + label.lower().replace(" ", "_") + '.jpg'
+        cv2.imwrite(fullsize_path, image)
+        thumbnail_base64 = base64.b64encode(cv2.imencode('.jpg', thumbnail, [cv2.IMWRITE_JPEG_QUALITY, 80])[1]).decode("utf-8")
+        return {
+            "label": label,
+            "url": fullsize_path,
+            "thumbnail": thumbnail_base64
+            }
+    
+def XY_to_EPSG4326(raster_gdf, raster_transform):
+    transformed_coordinates = [transform(lambda x, y: rasterio.transform.xy(raster_transform, y, x), row.geometry) for _, row in raster_gdf.iterrows()]
+    EPSG4326_gdf = gpd.GeoDataFrame(geometry=[MultiLineString([line]) for line in transformed_coordinates], crs='EPSG:4326')
+    EPSG4326_gdf = EPSG4326_gdf.join(raster_gdf.drop('geometry', axis=1))
+    return EPSG4326_gdf
 
 def draw_linestrings_on_image(bgr_image, linestring_gdf, linestring_color, linestring_thickness):
     for _, linestring in linestring_gdf.iterrows():
@@ -95,7 +113,7 @@ def cut(line, distance): ## https://gist.github.com/sgillies/465156#file_cut.py
                 LineString(coords[:i] + [(cp.x, cp.y)]),
                 LineString([(cp.x, cp.y)] + coords[i:])]
     
-def vector_skeleton(skeleton):
+def vector_skeleton(skeleton, simplify = 2, discard_length = False, discard_max_points = 1):
     contours = cv2.findContours(skeleton, cv2.RETR_LIST , cv2.CHAIN_APPROX_NONE)[0]
     singular_contours = []
     visited_points = set()
@@ -145,7 +163,12 @@ def vector_skeleton(skeleton):
     
     lineStrings = []
     for split_contour in split_contours:
-        lineStrings.append(geometry.LineString(np.array(split_contour).reshape(-1, 2)).simplify(2))
+        if len(split_contour) <= discard_max_points:
+            continue
+        lineString = geometry.LineString(np.array(split_contour).reshape(-1, 2)).simplify(simplify)
+        if discard_length is not False and lineString.length <= discard_length:
+            continue
+        lineStrings.append(lineString)
     return lineStrings
 
 ## TO DO: Investigate why type casting like this causes the server to hang.
@@ -172,6 +195,7 @@ def vector_skeleton(skeleton):
 
 def desCartes(map_directory,
       binary_image = False, 
+      colours = False,
       blur_size = 3, # Used to try to remove blemishes from image - greatly reduces number of spurious contours and consequent processing-time
       binarization_threshold = 210,
       MAX_ROAD_WIDTH = 20, 
@@ -193,6 +217,7 @@ def desCartes(map_directory,
       ):
     
     binary_image = bool(binary_image)
+    colours = bool(colours)
     blur_size = int(blur_size)
     binarization_threshold = int(binarization_threshold)
     MAX_ROAD_WIDTH = float(MAX_ROAD_WIDTH) 
@@ -211,22 +236,15 @@ def desCartes(map_directory,
     maximum_tree_density = float(maximum_tree_density)
     visualise = bool(visualise)
     show_images = bool(show_images)
-    
-    def add_to_result_images(label, image):
-        if visualise:
-            thumbnail = cv2.resize(image, (200, int(200 * image.shape[0] / image.shape[1])), interpolation=cv2.INTER_CUBIC)
-            fullsize_path = map_directory + label.lower().replace(" ", "_") + '.jpg'
-            cv2.imwrite(fullsize_path, image)
-            thumbnail_base64 = base64.b64encode(cv2.imencode('.jpg', thumbnail, [cv2.IMWRITE_JPEG_QUALITY, 80])[1]).decode("utf-8")
-            result_images.append({
-                "label": label,
-                "url": fullsize_path,
-                "thumbnail": thumbnail_base64
-            })
 
     # Open the geotiff using rasterio
     with rasterio.open(map_directory + 'geo.tiff') as raster:
         raster_image = raster.read()
+        
+    if not colours == False: # Tile source is not GB OS at zoom level 17 (based on size of X-pixel)
+        from coloured_roads import coloured_roads
+        return coloured_roads(raster_image, map_directory, transform = raster.transform)
+    
     modern_roads_EPSG4326, modern_roads = transform_linestrings(map_directory, raster.transform)
     modern_roads_sindex = modern_roads.sindex
     
@@ -251,7 +269,7 @@ def desCartes(map_directory,
     height, width = binary_image.shape[:2]
 
     result_images = []
-    add_to_result_images("Thresholded map image", binary_image)
+    result_images.append(result_image(visualise, map_directory, "Thresholded map image", binary_image))
     
     # Remove blobs (for example, circular markers from roadways on GB OS maps)
     params = cv2.SimpleBlobDetector_Params()
@@ -338,7 +356,7 @@ def desCartes(map_directory,
             contour_validity.append(False)
             contour_areas.append(0)   
     
-    add_to_result_images("Thinned map image", binary_image)
+    result_images.append(result_image(visualise, map_directory, "Thinned map image", binary_image))
     
     print("Testing and filtering shapes ...")
     likely_roads = []
@@ -440,7 +458,7 @@ def desCartes(map_directory,
         skeleton_mask = np.zeros_like(grayscale_image, dtype=np.uint8)
         skeleton_mask[skeleton == 255] = 255
         likely_roads_visualisation[skeleton_mask > 0] = (0, 255, 255, 255)
-        add_to_result_images("Skeletonized candidate roads", likely_roads_visualisation)
+        result_images.append(result_image(visualise, map_directory, "Skeletonized candidate roads", likely_roads_visualisation))
 
 #######################
 ## VECTOR PROCESSING ##
@@ -513,7 +531,7 @@ def desCartes(map_directory,
     print(str(len(split_lineStrings)-len(lineStrings)) + ' splits made ...')
     lineStrings = split_lineStrings       
         
-    add_to_result_images("Road boundary checks (with modern OS roads)", proximity_visualisation)
+    result_images.append(result_image(visualise, map_directory, "Road boundary checks (with modern OS roads)", proximity_visualisation))
 
 #############
 ## SCORING ##
@@ -677,23 +695,18 @@ def desCartes(map_directory,
     # Reproject LineStrings to original raster CRS
     print("Reprojecting ...")
     
-    def XY_to_EPSG4326(raster_gdf):
-        transformed_coordinates = [transform(lambda x, y: rasterio.transform.xy(raster.transform, y, x), row.geometry) for _, row in raster_gdf.iterrows()]
-        EPSG4326_gdf = gpd.GeoDataFrame(geometry=[MultiLineString([line]) for line in transformed_coordinates])
-        return EPSG4326_gdf
-    
-    candidate_roads_EPSG4326_gdf = XY_to_EPSG4326(candidate_roads)
+    candidate_roads_EPSG4326_gdf = XY_to_EPSG4326(candidate_roads, raster.transform)
     candidate_roads_EPSG4326_gdf['modern_road_id'] = candidate_roads['modern_road_id'].values
     candidate_roads_EPSG4326_gdf['score'] = candidate_roads['score'].values
     candidate_roads_EPSG4326_gdf.to_file(map_directory + 'desCartes.gpkg', layer="candidate_roads", driver="GPKG")
     
-    road_network_EPSG4326_gdf = XY_to_EPSG4326(road_network_gdf)
+    road_network_EPSG4326_gdf = XY_to_EPSG4326(road_network_gdf, raster.transform)
     road_network_EPSG4326_gdf['modern_road_id'] = road_network_gdf['modern_road_id'].values
     road_network_EPSG4326_gdf.to_file(map_directory + 'desCartes.gpkg', layer="road_network", driver="GPKG")
     
-    footpaths_double_EPSG4326_gdf = XY_to_EPSG4326(footpaths_double)
+    footpaths_double_EPSG4326_gdf = XY_to_EPSG4326(footpaths_double, raster.transform)
     footpaths_double_EPSG4326_gdf.to_file(map_directory + 'desCartes.gpkg', layer="double_dashes", driver="GPKG")
-    footpaths_single_EPSG4326_gdf = XY_to_EPSG4326(footpaths_single)
+    footpaths_single_EPSG4326_gdf = XY_to_EPSG4326(footpaths_single, raster.transform)
     footpaths_single_EPSG4326_gdf.to_file(map_directory + 'desCartes.gpkg', layer="single_dashes", driver="GPKG")
      
 ###################
@@ -733,11 +746,11 @@ def desCartes(map_directory,
                 cv2.polylines(overlay, [coords], isClosed=False, color=colour, thickness=2)
             visualisation = cv2.addWeighted(overlay, opacity, visualisation, 1 - opacity, 0)
     
-        add_to_result_images("Segmented map image", visualisation) 
+        result_images.append(result_image(visualise, map_directory, "Segmented map image", visualisation))
         
         road_network_visualisation = cv2.cvtColor(grayscale_image, cv2.COLOR_GRAY2BGR)
         road_network_visualisation = draw_linestrings_on_image(road_network_visualisation, road_network_gdf, (0, 0, 255, 255), 2)
-        add_to_result_images("Predicted Road Network", road_network_visualisation)
+        result_images.append(result_image(visualise, map_directory, "Predicted Road Network", road_network_visualisation))
         
         jpg_files = [os.path.join(map_directory, f) for f in os.listdir(map_directory) if f.endswith('.jpg')]
         zip_path = os.path.join(map_directory, 'images.zip')
