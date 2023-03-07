@@ -52,11 +52,11 @@ Extracting road vectors from coloured maps poses a different set of challenges.
 
 ><img src="https://user-images.githubusercontent.com/42514781/223348867-62c345ad-9623-4c8b-a060-3de3be2d4ea0.png" />
 >
->The coloured shapes are then thinned down to a single-pixel width, and then traced (by processing contours) too produce gappy vector lines.
+>The coloured shapes are then thinned down to a single-pixel width, and then traced (by processing contours) to produce gappy vector lines.
 
 ><img src="https://user-images.githubusercontent.com/42514781/223348896-24de5e47-81d8-4094-8ec9-4b471c446beb.png" />
 >
->Gaps are closed by a variety of techniques, which include extending each line a pixel at a time to see if it meets another extending line within a given distance, linking unconncected endpoints to nearest lines, and snapping near-coincident endpoints.
+>Gaps are closed by a variety of techniques, which include extending each line a pixel at a time to see if it meets another extending line within a given distance, linking unconnected endpoints to nearest lines, and snapping near-coincident endpoints.
 
 ## Development Roadmap
 
