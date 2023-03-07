@@ -1,6 +1,14 @@
 # *des*Cartes
 
-***des*Cartes recognises roads on old maps, and converts them to vector lines that can be used in GIS applications and historical transport network analysis.** *It is currently under development, but you can try a [limited live demo](https://github.com/docuracy/desCartes/edit/main/README.md#live-demo).*
+***des*Cartes recognises roads on old maps, and converts them to vector lines that can be used in GIS applications and historical transport network analysis.** *It is currently under development, but you can try a [limited live demo](#live-demo).*
+
++ [Black & White Maps](#black--white-maps)
++ [Coloured Maps](#coloured-maps)
++ [Development 'Roadmap'](#development-roadmap)
++ [Live Demo](#live-demo)
++ [Customisation & Funding](#customisation--funding)
+
+---
 
 ## Black & White Maps
 
@@ -53,7 +61,9 @@ Extracting road vectors from coloured maps poses a different set of challenges.
 ## Development Roadmap
 
 - [ ] Improve 1890s B&W vectorisation by reference to vectorised 1950s coloured map framework ([Issue #11](https://github.com/docuracy/desCartes/issues/11)).
+- [ ] Enable upload of georeferenced maps in lieu of map tiles ([Issue #12]([../../issues/12](https://github.com/docuracy/desCartes/issues/12))).
 - [ ] Refine processing parameters through machine learning ([Issue #4](https://github.com/docuracy/desCartes/issues/4)).
+- [ ] Create a national "#GB1900" road vector dataset ([Issue #13](https://github.com/docuracy/desCartes/issues/13)).
 
 ## Live Demo
 
@@ -70,6 +80,10 @@ Extracting road vectors from coloured maps poses a different set of challenges.
 
 ---
 
-**Development and server costs are entirely self-funded. Please [donate](https://ko-fi.com/docuracy) if you can. Commissions for customised development are welcome!**
+## Customisation & Funding
+
+You are free to share and adapt this software yourself, subject to proper attribution as detailed in [the license](https://github.com/docuracy/desCartes/blob/main/LICENSE.md), but **commissions for customised development are very welcome!**
+
+**Development and server costs are otherwise entirely self-funded. Please [donate](https://ko-fi.com/docuracy) if you can.**
 
 Follow [@docuracy](https://twitter.com/docuracy) on Twitter or [@stephengadd@mstdn.social](https://mstdn.social/@stephengadd) on Mastodon for updates.
