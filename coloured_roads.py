@@ -46,6 +46,12 @@ def snap_endpoints(gdf, tolerance):
 
     return gdf
 
+def simplify_gdf(gdf, simplify = 2):
+    for index, row in gdf.iterrows():
+        if isinstance(row.geometry, LineString):
+            new_geometry = row.geometry.simplify(simplify)
+            gdf.at[index, 'geometry'] = new_geometry    
+
 def endpoint_connectivity(gdf, shape = False, margin = 5, full_dictionary = False):
     endpoints = set()
     connected_endpoints = set()
@@ -233,7 +239,7 @@ def patch_gdf(gdf, image_shape = False, tolerance=20, snap_to_line = False): # I
     
     connected = set() # indices of newly-connected endpoints
     drop = set()
-    split_points = set() # collect lines that need to be split following a join with another line
+    split_points = {} # collect lines that need to be split following a join with another line
     for i, endpoint in endpoint_gdf.iterrows():
         print(f'Examining {i} {endpoint.geometry} ...')
         
@@ -286,7 +292,9 @@ def patch_gdf(gdf, image_shape = False, tolerance=20, snap_to_line = False): # I
                     
             if min_dist <= tolerance and closest_point is not None:
                 print(f'... joined to {closest_point}.')
-                split_points.add((closest_point.coords, closest_line))
+                if closest_line not in split_points:
+                    split_points[closest_line] = []
+                split_points[closest_line].append(gdf.loc[closest_line].geometry.project(closest_point))
                 if polarity == 0:
                     gdf.loc[line_idx, 'geometry'] = LineString([closest_point.coords[0]] + list(gdf.iloc[line_idx].geometry.coords))
                 else:
@@ -324,21 +332,27 @@ def patch_gdf(gdf, image_shape = False, tolerance=20, snap_to_line = False): # I
                 gdf = gpd.pd.concat([gdf, gpd.GeoDataFrame(geometry=[merged_lineString])], ignore_index=True)
                 
     if len(split_points) > 0:
-        for split_point, line_idx in split_points:
-            # Divide the linestring at the closest point to split_point
-            first_half, second_half = cut(gdf.loc[line_idx].geometry, gdf.loc[line_idx].geometry.project(Point(split_point)))
-            if second_half == False:
-                continue
+        
+        def add_row(line_idx, part):
+            new_row = gpd.pd.DataFrame(gdf.loc[line_idx].drop('geometry')).T
+            new_row['geometry'] = part
+            concatenate.append(new_row)
             
-            print(f'... dropping split linestring {line_idx} {"again " if line_idx in drop else ""} ...')
-            # Create a new DataFrame with the first half of the line and its attributes
-            new_row1 = gpd.pd.DataFrame(gdf.loc[line_idx].drop('geometry')).T
-            new_row1['geometry'] = first_half
-            # Create a new DataFrame with the second half of the line and its attributes
-            new_row2 = gpd.pd.DataFrame(gdf.loc[line_idx].drop('geometry')).T
-            new_row2['geometry'] = second_half
-            # Concatenate the original DataFrame with the two new rows
-            gdf = gpd.pd.concat([gdf, new_row1, new_row2], ignore_index=True)
+        for line_idx, distances in split_points.items():
+        
+            distances = sorted(distances, reverse=True)
+            
+            concatenate = [gdf]
+            residue = gdf.loc[line_idx].geometry
+            for distance in distances:
+                print(f'cutting {line_idx} at {distance}')
+                residue, cut_part = cut(residue, distance)
+                if not cut_part == False:
+                    add_row(line_idx, cut_part)
+            
+            add_row(line_idx, residue)
+            gdf = gpd.pd.concat(concatenate, ignore_index=True)
+            print(f'... dropping split linestring {line_idx} ...')
             drop.update([line_idx])
             
     gdf = gdf.drop(drop)
@@ -371,7 +385,6 @@ def coloured_roads(image, map_directory, transform, colours, visualise = True, s
     
     for colour_info in colours:
         
-        print(colour_info)
         print(f'Processing {colour_info["name"]}')
         
         # Extract the mean and std deviation of the LAB values for the current colour
@@ -479,9 +492,13 @@ def coloured_roads(image, map_directory, transform, colours, visualise = True, s
     result_images.append(result_image(visualise, map_directory, "Extracted colours", mask_bgr))
     result_images.append(result_image(visualise, map_directory, "Extracted roads", vector_bgr))
     roads = gpd.GeoDataFrame.from_records(vectors)
+    
     roads = snap_endpoints(roads, 10)
     roads = patch_vector_skeleton(roads, image.shape, simplify = 1, discard = 8, discard_only = True, tolerance = 30, reskeletonize = False, show_images = show_images)
+    
     roads = patch_gdf(roads, image_shape = image.shape, tolerance = 100, snap_to_line = True)
+    
+    simplify_gdf(roads)
     roads = snap_endpoints(roads, 10)
         
     coloured_roads_EPSG4326_gdf = XY_to_EPSG4326(roads, transform)
