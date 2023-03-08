@@ -8,6 +8,12 @@
 + [Live Demo](#live-demo)
 + [Customisation & Funding](#customisation--funding)
 
+> ## **DH AWARDS 2022**
+> 
+> This project has been nominated in the **Best DH Tool** category in the [Digital Humanities Awards 2022](http://dhawards.org/dhawards2022/voting/).
+> 
+> #### Please take a look at the [other worthy nominees](http://dhawards.org/dhawards2022/voting/) and consider [voting for ***des*Cartes**!](https://docs.google.com/forms/d/e/1FAIpQLSfHWdM-lll3cANR2Om3sX9iUVtRR3umvuBfebchvXawPFN3Vw/viewform)
+
 ---
 
 ## Black & White Maps
@@ -61,7 +67,7 @@ Extracting road vectors from coloured maps poses a different set of challenges.
 ## Development Roadmap
 
 - [ ] Improve 1890s B&W vectorisation by reference to vectorised 1950s coloured map framework ([Issue #11](https://github.com/docuracy/desCartes/issues/11)).
-- [ ] Enable upload of georeferenced maps in lieu of map tiles ([Issue #12]([../../issues/12](https://github.com/docuracy/desCartes/issues/12))).
+- [ ] Enable upload of georeferenced maps or plain map images in lieu of map tiles ([Issue #12]([../../issues/12](https://github.com/docuracy/desCartes/issues/12))).
 - [ ] Refine processing parameters through machine learning ([Issue #4](https://github.com/docuracy/desCartes/issues/4)).
 - [ ] Create a national "#GB1900" road vector dataset ([Issue #13](https://github.com/docuracy/desCartes/issues/13)).
 
