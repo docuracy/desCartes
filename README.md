@@ -4,6 +4,7 @@
 
 + [Black & White Maps](#black--white-maps)
 + [Coloured Maps](#coloured-maps)
++ [Flowchart](#flowchart)
 + [Development 'Roadmap'](#development-roadmap)
 + [Live Demo](#live-demo)
 + [Customisation & Funding](#customisation--funding)
@@ -63,6 +64,35 @@ Extracting road vectors from coloured maps poses a different set of challenges.
 ><img src="https://user-images.githubusercontent.com/42514781/223348896-24de5e47-81d8-4094-8ec9-4b471c446beb.png" />
 >
 >Gaps are closed by a variety of techniques, which include extending each line a pixel at a time to see if it meets another extending line within a given distance, linking unconnected endpoints to nearest lines, and snapping near-coincident endpoints.
+
+## Flowchart
+
+This gives a very broad overview of the sequencing of processes for different types of map. Each process takes a customisable set of parameters which have a significant impact on the quality of results. The sequencing and parameters need to be adjusted depending on the style of the map.
+
+```mermaid
+  flowchart LR
+    A[Load Map]-->B{Is it coloured?}
+    B-->|Yes|B1[Extract Colours]
+    B-->|No|C2[Contour Cleaning]
+    subgraph coloured [Coloured Map]
+    B1-->C1[Remove Shapes]
+    C1-->D1[Morphological Cleaning]
+    D1-->E1[Skeletonization]
+    E1-->F1[Cleaning]
+    F1-->G1[Patching]
+    G1-->H1[Reprojecting]
+    end
+    subgraph bw [Black & White Map]
+    C2-->D2[Morphological Cleaning]
+    D2-->E2[Shape Filtering]
+    E2-->F2[Skeletonization]
+    F2-->G2[Road Detection]
+    G2-->H2[Patching]
+    H2-->I2[Network Analysis]
+    end
+    H1-->C[Output Vectors & Visualisation]
+    I2-->C
+```
 
 ## Development Roadmap
 
