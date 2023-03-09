@@ -24,6 +24,7 @@ import cv2
 import os
 import zipfile
 import numpy as np
+import warnings
 from skimage.morphology import skeletonize
 import base64
 import shapely.geometry as geometry
@@ -57,7 +58,7 @@ def zip_files(map_directory, filetype = '.jpg', filename = 'images.zip'):
     
 def XY_to_EPSG4326(raster_gdf, raster_transform):
     transformed_coordinates = [transform(lambda x, y: rasterio.transform.xy(raster_transform, y, x), row.geometry) for _, row in raster_gdf.iterrows()]
-    EPSG4326_gdf = gpd.GeoDataFrame(geometry=[MultiLineString([line]) for line in transformed_coordinates], crs='EPSG:4326')
+    EPSG4326_gdf = gpd.GeoDataFrame(geometry=[LineString(line) for line in transformed_coordinates], crs='EPSG:4326')
     EPSG4326_gdf = EPSG4326_gdf.join(raster_gdf.drop('geometry', axis=1))
     return EPSG4326_gdf
 
@@ -106,10 +107,13 @@ def cut(line, distance): ## https://gist.github.com/sgillies/465156#file_cut.py
     # Cuts a line in two at a distance from its starting point
     if distance <= 0.0 or distance >= line.length:
         print('No cut made: distance = '+str(distance)+', line length = '+str(line.length)+'.')
-        return [LineString(line)], False
+        return LineString(line), False
     coords = list(line.coords)        
     for i, p in enumerate(coords):
-        pd = line.project(Point(p))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            pd = line.project(Point(p))
+        print(f'Projecting {p}, got {pd} ...')
         if pd == distance:
             return [
                 LineString(coords[:i+1]),

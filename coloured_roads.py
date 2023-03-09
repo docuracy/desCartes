@@ -7,6 +7,7 @@ import numpy as np
 from skimage.morphology import skeletonize
 import os
 import sys
+import warnings
 import ast
 import json
 import geopandas as gpd
@@ -284,7 +285,9 @@ def patch_gdf(gdf, image_shape = False, tolerance=20, snap_to_line = False): # I
             if closest_point is None:
                 print('... no intersection found, looking for nearby point ...')
                 for idx, line in matches.iterrows():
-                    dist_to_line = line.geometry.distance(endpoint.geometry)
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore")
+                        dist_to_line = line.geometry.distance(endpoint.geometry)
                     if dist_to_line < min_dist:
                         closest_point = line.geometry.interpolate(line.geometry.project(endpoint.geometry))
                         closest_line = idx
@@ -345,7 +348,7 @@ def patch_gdf(gdf, image_shape = False, tolerance=20, snap_to_line = False): # I
             concatenate = [gdf]
             residue = gdf.loc[line_idx].geometry
             for distance in distances:
-                print(f'cutting {line_idx} at {distance}')
+                print(f'cutting {line_idx} ({residue}) at {distance}')
                 residue, cut_part = cut(residue, distance)
                 if not cut_part == False:
                     add_row(line_idx, cut_part)

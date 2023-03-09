@@ -18,10 +18,18 @@ import shutil
 from tile_convert import bbox_to_xyz, tile_edges
 from osgeo import gdal
 import pyproj as proj
+import hashlib
+import base64
 
 temp_dir = os.path.join(os.path.dirname(__file__), 'temp')
 
-def fetch_tile(x, y, z, tile_source):
+def fetch_tile(x, y, z, tile_source, cache_dir):
+    
+    cache_path = f'{cache_dir}/{x}_{y}_{z}.jpg'
+    if os.path.exists(cache_path):
+        shutil.copy(cache_path, temp_dir)
+        return cache_path
+    
     url = tile_source.replace(
         "{x}", str(x)).replace(
         "{y}", str(y)).replace(
@@ -47,7 +55,6 @@ def fetch_tile(x, y, z, tile_source):
 def merge_tiles(input_pattern, output_path, extent):
     vrt_path = temp_dir + "/tiles.vrt"
     gdal.BuildVRT(vrt_path, glob.glob(input_pattern))
-    print(extent)
     gdal.Translate(output_path, vrt_path, outputSRS='EPSG:4326', projWin=[extent[0], extent[3], extent[2], extent[1]])
 
 
@@ -68,6 +75,12 @@ def georeference_raster_tile(x, y, z, path):
 
 def create_geotiff(tile_source, output_dir, geotiff_name, bounding_box, zoom): 
     lon_min, lat_min, lon_max, lat_max = bounding_box
+    
+    # Create a cache directory name
+    hash_obj = hashlib.sha256(tile_source.encode())
+    hash_bytes = hash_obj.digest()
+    hash_b64 = base64.urlsafe_b64encode(hash_bytes).decode()
+    cache_dir = "./data/cache/" + hash_b64
 
     # Script start:
     if not os.path.exists(temp_dir):
@@ -84,8 +97,8 @@ def create_geotiff(tile_source, output_dir, geotiff_name, bounding_box, zoom):
     for x in range(x_min, x_max + 1):
         for y in range(y_min, y_max + 1):
             try:
-                png_path = fetch_tile(x, y, zoom, tile_source)
-                print(f"{x},{y},{tile_source} fetched")
+                png_path = fetch_tile(x, y, zoom, tile_source, cache_dir)
+                print(f"{x},{y} {'found in cache.' if cache_dir in png_path else 'fetched from tileserver.'}")
                 georeference_raster_tile(x, y, zoom, png_path)
             except OSError:
                 print(f"Error, failed to get {x},{y}")
@@ -93,16 +106,23 @@ def create_geotiff(tile_source, output_dir, geotiff_name, bounding_box, zoom):
 
     print("Resolving and georeferencing of raster tiles complete")
 
-    print("Merging tiles")
+    print("Merging tiles ...")
     filename = output_dir + geotiff_name
     merge_tiles(temp_dir + '/*.tif', filename, bounding_box)
-    print("Merge complete")
+    print("... complete")
     
     # input_raster = gdal.Open(WGS84_filename)
     # output_raster = output_dir + '/' + geotiff_name
     # kwargs = {'dstAlpha': True}
     # warp = gdal.Warp(output_raster,input_raster,dstSRS='EPSG:27700',**kwargs)
     # warp = None # Closes the files
+    
+    # Move any downloaded files to the cache folder
+    if not os.path.exists(cache_dir):
+        os.makedirs(cache_dir)
+    for file in os.listdir(temp_dir):
+        if file.endswith(".jpg"):
+            shutil.move(os.path.join(temp_dir, file), os.path.join(cache_dir, file))
 
     shutil.rmtree(temp_dir)
     
