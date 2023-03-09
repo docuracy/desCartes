@@ -122,7 +122,7 @@ if os.path.exists(OUTPUTDIR + GEOTIFF_NAME):
     mapfile = OUTPUTDIR + GEOTIFF_NAME
 else:
     mapfile = create_geotiff (RASTER_TILE_URL, OUTPUTDIR, GEOTIFF_NAME, EXTENT, RASTER_TILE_ZOOM)
-    extract_modern_roads(DATADIR, OUTPUTDIR, ROADFILE, LOCATION_NAME, EXTENT, shapefile = True)
+    extract_modern_roads(DATADIR, OUTPUTDIR, ROADFILE, LOCATION_NAME, EXTENT, shapefile = False)
 
 # Open the geotiff using rasterio
 with rasterio.open(mapfile) as raster:

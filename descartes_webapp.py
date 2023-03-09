@@ -71,7 +71,7 @@ def get_desCartes():
     
             if not os.path.exists(OUTPUTDIR + GEOTIFF_NAME):
                 create_geotiff(RASTER_TILE_URL, OUTPUTDIR, GEOTIFF_NAME, EXTENT, RASTER_TILE_ZOOM)
-                extract_modern_roads(DATADIR, OUTPUTDIR, MODERN_ROADFILE, VIEW_ID, EXTENT)
+                extract_modern_roads(DATADIR, OUTPUTDIR, MODERN_ROADFILE, VIEW_ID, EXTENT, shapefile=False)
     
             _, _, result_images, message = desCartes(OUTPUTDIR, **args)
     

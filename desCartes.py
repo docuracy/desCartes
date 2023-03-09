@@ -181,6 +181,48 @@ def vector_skeleton(skeleton, simplify = 2, discard_length = False, discard_max_
             continue
         lineStrings.append(lineString)
     return lineStrings
+        
+def extract_dashed_paths(binary_image, dash_detector, std_deviation_multiplier = 3):
+    area_range = (dash_detector['area']['mean'] - std_deviation_multiplier * dash_detector['area']['std_dev'], dash_detector['area']['mean'] + std_deviation_multiplier * dash_detector['area']['std_dev'])
+    convexity_range = (dash_detector['convexity']['mean'] - std_deviation_multiplier * dash_detector['convexity']['std_dev'], 1)
+    aspect_ratio_range = (dash_detector['aspect_ratio']['mean'] - std_deviation_multiplier * dash_detector['aspect_ratio']['std_dev'], dash_detector['aspect_ratio']['mean'] + std_deviation_multiplier * dash_detector['aspect_ratio']['std_dev'])
+    contours, _ = cv2.findContours(binary_image, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    footpaths = np.zeros_like(binary_image)
+    for contour in contours: 
+        # Calculate areas of contour and its convex hull
+        contour_area = cv2.contourArea(contour)
+        if not area_range[0] <= contour_area <= area_range[1]:
+            continue
+        hull = cv2.convexHull(contour)
+        hull_area = cv2.contourArea(hull)
+        convexity = contour_area / hull_area
+        if not convexity_range[0] <= convexity <= convexity_range[1]:
+            continue
+        # Calculate aspect ratio
+        rect = cv2.minAreaRect(contour)
+        rect_width, rect_height = rect[1]
+        if rect_width == 0 or rect_height == 0:
+            continue # Reject contour
+        else:
+            aspect_ratio = min(rect_width, rect_height) / max(rect_width, rect_height)
+        if not aspect_ratio_range[0] <= aspect_ratio <= aspect_ratio_range[1]:
+            continue
+        cv2.drawContours(footpaths, [contour], -1, 255, -1)
+
+    # Dilate to merge double-dash lines    
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (6, 6))
+    footpaths_merged = cv2.dilate(footpaths, kernel, iterations=2)
+    footpaths_double = cv2.erode(footpaths_merged, kernel, iterations=3)
+    footpaths_double = cv2.dilate(footpaths_double, kernel, iterations=4)
+    footpaths_single = cv2.subtract(footpaths_merged, footpaths_double)
+    footpaths_double = skeletonize(footpaths_double / 255.).astype(np.uint8) * 255
+    footpaths_single = skeletonize(footpaths_single / 255.).astype(np.uint8) * 255
+    footpaths_double = vector_skeleton(footpaths_double)
+    footpaths_single = vector_skeleton(footpaths_single)
+    footpaths_double = gpd.GeoDataFrame({'geometry': footpaths_double})
+    footpaths_single = gpd.GeoDataFrame({'geometry': footpaths_single})        
+    
+    return footpaths, footpaths_double, footpaths_single
 
 ## TO DO: Investigate why type casting like this causes the server to hang.
 # def desCartes(
@@ -300,47 +342,61 @@ def desCartes(map_directory,
         r = int(kp.size / 2) + 2
         cv2.circle(binary_image, (x, y), r, (255, 255, 255), -1)
         
-    # Remove dashes (which can cause skeleton braiding), and extract both single- and double-dashed lines to GeoDataFrames
-    std_deviation_multiplier = 3
-    area_range = (dash_detector['area']['mean'] - std_deviation_multiplier * dash_detector['area']['std_dev'], dash_detector['area']['mean'] + std_deviation_multiplier * dash_detector['area']['std_dev'])
-    convexity_range = (dash_detector['convexity']['mean'] - std_deviation_multiplier * dash_detector['convexity']['std_dev'], 1)
-    aspect_ratio_range = (dash_detector['aspect_ratio']['mean'] - std_deviation_multiplier * dash_detector['aspect_ratio']['std_dev'], dash_detector['aspect_ratio']['mean'] + std_deviation_multiplier * dash_detector['aspect_ratio']['std_dev'])
-    contours, _ = cv2.findContours(binary_image_otsu, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-    footpaths = np.zeros_like(binary_image)
-    for contour in contours: 
-        # Calculate areas of contour and its convex hull
-        contour_area = cv2.contourArea(contour)
-        if not area_range[0] <= contour_area <= area_range[1]:
-            continue
-        hull = cv2.convexHull(contour)
-        hull_area = cv2.contourArea(hull)
-        convexity = contour_area / hull_area
-        if not convexity_range[0] <= convexity <= convexity_range[1]:
-            continue
-        # Calculate aspect ratio
-        rect = cv2.minAreaRect(contour)
-        rect_width, rect_height = rect[1]
-        if rect_width == 0 or rect_height == 0:
-            continue # Reject contour
-        else:
-            aspect_ratio = min(rect_width, rect_height) / max(rect_width, rect_height)
-        if not aspect_ratio_range[0] <= aspect_ratio <= aspect_ratio_range[1]:
-            continue
-        cv2.drawContours(footpaths, [contour], -1, 255, -1)
-        
+    # Remove dashes (which can cause skeleton braiding), and extract both single- and double-dashed lines to GeoDataFrames    
+    footpaths, footpaths_double, footpaths_single = extract_dashed_paths(binary_image_otsu, dash_detector)
+
+    footpaths_double_EPSG4326_gdf = XY_to_EPSG4326(footpaths_double, raster.transform)
+    footpaths_double_EPSG4326_gdf.to_file(map_directory + 'desCartes.gpkg', layer="double_dashes", driver="GPKG")
+    footpaths_single_EPSG4326_gdf = XY_to_EPSG4326(footpaths_single, raster.transform)
+    footpaths_single_EPSG4326_gdf.to_file(map_directory + 'desCartes.gpkg', layer="single_dashes", driver="GPKG")
+    
     binary_image = np.where(footpaths == 255, 255, binary_image) # Remove dashes
-    # Dilate to merge double-dash lines    
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (6, 6))
-    footpaths_merged = cv2.dilate(footpaths, kernel, iterations=2)
-    footpaths_double = cv2.erode(footpaths_merged, kernel, iterations=3)
-    footpaths_double = cv2.dilate(footpaths_double, kernel, iterations=4)
-    footpaths_single = cv2.subtract(footpaths_merged, footpaths_double)
-    footpaths_double = skeletonize(footpaths_double / 255.).astype(np.uint8) * 255
-    footpaths_single = skeletonize(footpaths_single / 255.).astype(np.uint8) * 255
-    footpaths_double = vector_skeleton(footpaths_double)
-    footpaths_single = vector_skeleton(footpaths_single)
-    footpaths_double = gpd.GeoDataFrame({'geometry': footpaths_double})
-    footpaths_single = gpd.GeoDataFrame({'geometry': footpaths_single})
+    
+    # std_deviation_multiplier = 3
+    # area_range = (dash_detector['area']['mean'] - std_deviation_multiplier * dash_detector['area']['std_dev'], dash_detector['area']['mean'] + std_deviation_multiplier * dash_detector['area']['std_dev'])
+    # convexity_range = (dash_detector['convexity']['mean'] - std_deviation_multiplier * dash_detector['convexity']['std_dev'], 1)
+    # aspect_ratio_range = (dash_detector['aspect_ratio']['mean'] - std_deviation_multiplier * dash_detector['aspect_ratio']['std_dev'], dash_detector['aspect_ratio']['mean'] + std_deviation_multiplier * dash_detector['aspect_ratio']['std_dev'])
+    # contours, _ = cv2.findContours(binary_image_otsu, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    # footpaths = np.zeros_like(binary_image)
+    # for contour in contours: 
+    #     # Calculate areas of contour and its convex hull
+    #     contour_area = cv2.contourArea(contour)
+    #     if not area_range[0] <= contour_area <= area_range[1]:
+    #         continue
+    #     hull = cv2.convexHull(contour)
+    #     hull_area = cv2.contourArea(hull)
+    #     convexity = contour_area / hull_area
+    #     if not convexity_range[0] <= convexity <= convexity_range[1]:
+    #         continue
+    #     # Calculate aspect ratio
+    #     rect = cv2.minAreaRect(contour)
+    #     rect_width, rect_height = rect[1]
+    #     if rect_width == 0 or rect_height == 0:
+    #         continue # Reject contour
+    #     else:
+    #         aspect_ratio = min(rect_width, rect_height) / max(rect_width, rect_height)
+    #     if not aspect_ratio_range[0] <= aspect_ratio <= aspect_ratio_range[1]:
+    #         continue
+    #     cv2.drawContours(footpaths, [contour], -1, 255, -1)
+    #
+    # binary_image = np.where(footpaths == 255, 255, binary_image) # Remove dashes
+    # # Dilate to merge double-dash lines    
+    # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (6, 6))
+    # footpaths_merged = cv2.dilate(footpaths, kernel, iterations=2)
+    # footpaths_double = cv2.erode(footpaths_merged, kernel, iterations=3)
+    # footpaths_double = cv2.dilate(footpaths_double, kernel, iterations=4)
+    # footpaths_single = cv2.subtract(footpaths_merged, footpaths_double)
+    # footpaths_double = skeletonize(footpaths_double / 255.).astype(np.uint8) * 255
+    # footpaths_single = skeletonize(footpaths_single / 255.).astype(np.uint8) * 255
+    # footpaths_double = vector_skeleton(footpaths_double)
+    # footpaths_single = vector_skeleton(footpaths_single)
+    # footpaths_double = gpd.GeoDataFrame({'geometry': footpaths_double})
+    # footpaths_single = gpd.GeoDataFrame({'geometry': footpaths_single})
+    #
+    # footpaths_double_EPSG4326_gdf = XY_to_EPSG4326(footpaths_double, raster.transform)
+    # footpaths_double_EPSG4326_gdf.to_file(map_directory + 'desCartes.gpkg', layer="double_dashes", driver="GPKG")
+    # footpaths_single_EPSG4326_gdf = XY_to_EPSG4326(footpaths_single, raster.transform)
+    # footpaths_single_EPSG4326_gdf.to_file(map_directory + 'desCartes.gpkg', layer="single_dashes", driver="GPKG")
 
     # Thin all black lines to 1px
     binary_image = np.invert(binary_image)  
@@ -717,11 +773,6 @@ def desCartes(map_directory,
     road_network_EPSG4326_gdf = XY_to_EPSG4326(road_network_gdf, raster.transform)
     road_network_EPSG4326_gdf['modern_road_id'] = road_network_gdf['modern_road_id'].values
     road_network_EPSG4326_gdf.to_file(map_directory + 'desCartes.gpkg', layer="road_network", driver="GPKG")
-    
-    footpaths_double_EPSG4326_gdf = XY_to_EPSG4326(footpaths_double, raster.transform)
-    footpaths_double_EPSG4326_gdf.to_file(map_directory + 'desCartes.gpkg', layer="double_dashes", driver="GPKG")
-    footpaths_single_EPSG4326_gdf = XY_to_EPSG4326(footpaths_single, raster.transform)
-    footpaths_single_EPSG4326_gdf.to_file(map_directory + 'desCartes.gpkg', layer="single_dashes", driver="GPKG")
      
 ###################
 ## VISUALISATION ##
