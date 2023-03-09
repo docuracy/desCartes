@@ -71,7 +71,7 @@ This gives a very broad overview of the sequencing of processes for different ty
 
 ```mermaid
   flowchart LR
-    A[Load Map]-->B{Is it coloured?}
+    A((Load Map))-->B{Is it coloured?}
     B-->|Yes|B1[Extract Colours]
     B-->|No|C2[Contour Cleaning]
     subgraph coloured [Coloured Map]
@@ -90,7 +90,7 @@ This gives a very broad overview of the sequencing of processes for different ty
     G2-->H2[Patching]
     H2-->I2[Network Analysis]
     end
-    H1-->C[Output Vectors & Visualisation]
+    H1-->C((Output Vectors & Visualisation))
     I2-->C
 ```
 
