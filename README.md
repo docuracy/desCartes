@@ -9,12 +9,6 @@
 + [Live Demo](#live-demo)
 + [Customisation & Funding](#customisation--funding)
 
-> ## **DH AWARDS 2022**
-> 
-> This project has been nominated in the **Best DH Tool** category in the [Digital Humanities Awards 2022](http://dhawards.org/dhawards2022/voting/).
-> 
-> #### Please take a look at the [other worthy nominees](http://dhawards.org/dhawards2022/voting/) and consider [voting for ***des*Cartes**!](https://docs.google.com/forms/d/e/1FAIpQLSfHWdM-lll3cANR2Om3sX9iUVtRR3umvuBfebchvXawPFN3Vw/viewform)
-
 ---
 
 ## Black & White Maps
@@ -97,8 +91,9 @@ This gives a very broad overview of the sequencing of processes for different ty
 ## Development Roadmap
 
 - [ ] Improve 1890s B&W vectorisation by reference to vectorised 1950s coloured map framework ([Issue #11](https://github.com/docuracy/desCartes/issues/11)).
+- [ ] Publish code as configurable, executable pipeline components using [Google Colab](https://colab.research.google.com/)-flavoured Jupyter notebooks.
 - [ ] Enable upload of georeferenced maps or plain map images in lieu of map tiles ([Issue #12]([../../issues/12](https://github.com/docuracy/desCartes/issues/12))).
-- [ ] Refine processing parameters through machine learning ([Issue #4](https://github.com/docuracy/desCartes/issues/4)).
+- [ ] Refine processing parameters through machine learning ([Issue #4](https://github.com/docuracy/desCartes/issues/4)), using TensorFlow Keras in Colab.
 - [ ] Create a national "#GB1900" road vector dataset ([Issue #13](https://github.com/docuracy/desCartes/issues/13)).
 
 ## Live Demo
