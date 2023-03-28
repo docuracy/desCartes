@@ -93,8 +93,14 @@ This gives a very broad overview of the sequencing of processes for different ty
 - [ ] Improve 1890s B&W vectorisation by reference to vectorised 1950s coloured map framework ([Issue #11](https://github.com/docuracy/desCartes/issues/11)).
 - [ ] Publish code as configurable, executable pipeline components using [Google Colab](https://colab.research.google.com/)-flavoured Jupyter notebooks.
 - [ ] Enable upload of georeferenced maps or plain map images in lieu of map tiles ([Issue #12]([../../issues/12](https://github.com/docuracy/desCartes/issues/12))).
-- [ ] Refine processing parameters through machine learning ([Issue #4](https://github.com/docuracy/desCartes/issues/4)), using TensorFlow Keras in Colab.
 - [ ] Create a national "#GB1900" road vector dataset ([Issue #13](https://github.com/docuracy/desCartes/issues/13)).
+- [ ] Refine processing parameters through machine learning ([Issue #4](https://github.com/docuracy/desCartes/issues/4)), using TensorFlow Keras in Colab.
+- [ ] Improve on Otsu image binarisation through trained-machine edge detection.
+- [ ] Pre-processing to remove road-name text in urban areas using Discrete Cosine Transformation (DCT) techniques. The aim for GB1900 is to train a classifier to separate character pixels from other black pixels (including road lines): training data might very easily be generated programmatically, tailored to the specific font and line widths of the OS 6” map series.
+- [ ] For GB1900, eliminate footpaths using Ramblers’ Association crowd-sourced data.
+- [ ] Use refined system to generate training data for machine categorisation of image contours, with minimal manual cleaning. Input variables for training would include contour area, convexity, and aspect ratio, the maximum, mean, and standard deviation of enclosed pixels of the Euclidian distance matrix, and the maximum, mean, and standard deviation of the size of enclosed contours.
+- [ ] Use of the Euclidian distance matrix and A* pathfinding algorithm to clean up the intersection distortion of skeletonised junctions.
+- [ ] Gap closure using least cost path through the Euclidian distance matrix.
 
 ## Live Demo
 
