@@ -98,7 +98,7 @@ This gives a very broad overview of the sequencing of processes for different ty
 - [ ] Pre-processing to remove road-name text in urban areas using Discrete Cosine Transformation (DCT) techniques. The aim for GB1900 is to train a classifier to separate character pixels from other black pixels (including road lines): training data might very easily be generated programmatically, tailored to the specific font and line widths of the OS 6” map series. Generalisation of such pre-processing might be preferable to the currently-implemented Otsu image thresholding.
 - [ ] For GB1900, eliminate footpaths using Ramblers’ Association crowd-sourced data.
 - [ ] Use refined system to generate training data for machine categorisation of image contours, with minimal manual cleaning. Input variables for training would include contour area, convexity, and aspect ratio, the maximum, mean, and standard deviation of enclosed pixels of the Euclidian distance matrix, and the maximum, mean, and standard deviation of the size of enclosed contours.
-- [ ] Use of the Euclidian distance matrix and A* pathfinding algorithm to clean up the intersection distortion of skeletonised junctions.
+- [ ] Use of the Euclidian distance matrix and [A* pathfinding algorithm](https://en.wikipedia.org/wiki/A*_search_algorithm) to clean up the intersection distortion of skeletonised junctions.
 - [ ] Gap closure using least cost path through the Euclidian distance matrix.
 
 ## Live Demo
