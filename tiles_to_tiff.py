@@ -53,7 +53,7 @@ def fetch_tile(x, y, z, tile_source, cache_dir):
 
 
 def merge_tiles(input_pattern, output_path, extent):
-    vrt_path = temp_dir + "/tiles.vrt"
+    vrt_path = os.path.join(temp_dir, "tiles.vrt")
     gdal.BuildVRT(vrt_path, glob.glob(input_pattern))
     gdal.Translate(output_path, vrt_path, outputSRS='EPSG:4326', projWin=[extent[0], extent[3], extent[2], extent[1]])
 
@@ -80,7 +80,7 @@ def create_geotiff(tile_source, output_dir, geotiff_name, bounding_box, zoom):
     hash_obj = hashlib.sha256(tile_source.encode())
     hash_bytes = hash_obj.digest()
     hash_b64 = base64.urlsafe_b64encode(hash_bytes).decode()
-    cache_dir = "./data/cache/" + hash_b64
+    cache_dir = os.path.join(os.path.dirname(__file__), "data", "cache", hash_b64)
 
     # Script start:
     if not os.path.exists(temp_dir):
@@ -107,8 +107,8 @@ def create_geotiff(tile_source, output_dir, geotiff_name, bounding_box, zoom):
     print("Resolving and georeferencing of raster tiles complete")
 
     print("Merging tiles ...")
-    filename = output_dir + geotiff_name
-    merge_tiles(temp_dir + '/*.tif', filename, bounding_box)
+    filename = os.path.join(output_dir, geotiff_name)
+    merge_tiles(os.path.join(temp_dir, '*.tif'), filename, bounding_box)
     print("... complete")
     
     # input_raster = gdal.Open(WGS84_filename)

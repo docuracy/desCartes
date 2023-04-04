@@ -26,6 +26,7 @@ import base64
 # from find_areas import find_areas
 from desCartes import desCartes
 from coloured_roads import coloured_roads
+from realign_1950s_to_1890s import realign_1950s_to_1890s
 import json
 
 #####################
@@ -35,17 +36,22 @@ import json
 # A simple way to get the extent coordinates is to open a Google map in a browser,
 # then right-click on the south-west corner of the area of interest. Then click on 
 # the displayed coordinates and then paste them below. Repeat for the north-east corner.
-EXTENT_SOUTHWEST_LAT, EXTENT_SOUTHWEST_LNG = 52.567900, -1.990716
-EXTENT_NORTHEAST_LAT, EXTENT_NORTHEAST_LNG = 52.588912, -1.957963
 
-EXTENT_SOUTHWEST_LNG, EXTENT_SOUTHWEST_LAT, EXTENT_NORTHEAST_LNG, EXTENT_NORTHEAST_LAT = -1.935997009277344,52.56137658013496,-1.898918151855469,52.58339467314521
+EXTENT_SOUTHWEST_LAT, EXTENT_SOUTHWEST_LNG = 51.50349919463678, -2.3478318403222653
+EXTENT_NORTHEAST_LAT, EXTENT_NORTHEAST_LNG = 51.511351738991365, -2.332338484447449
+LOCATION_NAME = 'tormarton'
+
+# EXTENT_SOUTHWEST_LAT, EXTENT_SOUTHWEST_LNG = 52.567939367463715, -1.992658440245488
+# EXTENT_NORTHEAST_LAT, EXTENT_NORTHEAST_LNG = 52.591446281961645, -1.9622368833162331
+# LOCATION_NAME = 'walsall'
+
+# EXTENT_SOUTHWEST_LNG, EXTENT_SOUTHWEST_LAT, EXTENT_NORTHEAST_LNG, EXTENT_NORTHEAST_LAT = -1.935997009277344,52.56137658013496,-1.898918151855469,52.58339467314521
+# LOCATION_NAME = 'great_barr'
 
 ## The location name will be used to name the directory where files are stored.
 ## If a geotiff already exist in this directory, it will be re-used, and the coordinates given above ignored.
-LOCATION_NAME = 'test3'
+# LOCATION_NAME = 'test5'
 # LOCATION_NAME = 'test2'
-# LOCATION_NAME = 'tormarton'
-# LOCATION_NAME = 'walsall'
 # LOCATION_NAME = 'sutton_coldfield'
 
 ## Uncomment one of these methods, or create your own in the IMAGE PROCESSING CALLS section.
@@ -53,14 +59,18 @@ LOCATION_NAME = 'test3'
 # METHOD = 'road_contours'
 # METHOD = 'progressive'
 # METHOD = 'development'
-METHOD = 'colour'
+# METHOD = 'colour'
+METHOD = '1950s_to_1890s'
 
-# RASTER_TILE_KEY = 'ySlCyGP2kmmfm9Dgtiqj' # TO USE THE URL GIVEN BELOW, GET YOUR OWN KEY FROM https://cloud.maptiler.com/account/keys/
-# RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb10k1888/{z}/{x}/{y}.jpg?key=' + RASTER_TILE_KEY
-RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb63k1955/{z}/{x}/{y}.jpg?key=ySlCyGP2kmmfm9Dgtiqj'
-# RASTER_TILE_ZOOM = 17
 # RASTER_TILE_URL = 'https://overlays.humap.site/layersoflondon/os_drawings/{z}/{x}/{y}.png'
-RASTER_TILE_ZOOM = 15
+# RASTER_TILE_ZOOM = 15
+
+RASTER_TILE_KEY = 'ySlCyGP2kmmfm9Dgtiqj' # TO USE THE URL GIVEN BELOW, GET YOUR OWN KEY FROM https://cloud.maptiler.com/account/keys/
+RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb10k1888/{z}/{x}/{y}.jpg?key=' + RASTER_TILE_KEY
+RASTER_TILE_ZOOM = 17
+
+# RASTER_TILE_URL = 'https://api.maptiler.com/tiles/uk-osgb63k1955/{z}/{x}/{y}.jpg?key=ySlCyGP2kmmfm9Dgtiqj'
+# RASTER_TILE_ZOOM = 15
 
 ## The ROADFILE must contain LineStrings only, reprojected if necessary to EPSG:4326 (WGS84)
 ## It should be placed in the DATADIR defined below.
@@ -371,6 +381,18 @@ match METHOD:
         # result_binary, _ = erase_areas(result_binary, raster_image_gray, 2000, closed = True, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase white shapes
         # result_binary, _ = erase_areas(result_binary, raster_image_gray, 3, contours = False, SHOW_IMAGES = SHOW_IMAGES, OUTPUTDIR = OUTPUTDIR) # Erase white noise
         
+    case '1950s_to_1890s':
+        realign_1950s_to_1890s(
+            map_directory = f"./output/{LOCATION_NAME}/", 
+            extent = {
+                    "sw_lng": EXTENT_SOUTHWEST_LNG,
+                    "sw_lat": EXTENT_SOUTHWEST_LAT, 
+                    "ne_lng": EXTENT_NORTHEAST_LNG,
+                    "ne_lat": EXTENT_NORTHEAST_LAT
+                    }
+            )
+    
+    
     case _: # Default 
         contours, skeleton, result_images, message = desCartes(OUTPUTDIR, template_dir = './../data/templates', show_images = True, shape_filter = False, MAX_ROAD_WIDTH = 40)
         
