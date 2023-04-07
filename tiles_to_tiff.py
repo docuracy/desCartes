@@ -74,7 +74,12 @@ def georeference_raster_tile(x, y, z, path):
                    outputBounds=bounds)
 
 def create_geotiff(tile_source, output_dir, geotiff_name, bounding_box, zoom): 
-    lon_min, lat_min, lon_max, lat_max = bounding_box
+    
+    if isinstance(bounding_box[0], tuple):
+        lon_min, lat_min = bounding_box[0]
+        lon_max, lat_max = bounding_box[1]
+    else:
+        lon_min, lat_min, lon_max, lat_max = bounding_box
     
     # Create a cache directory name
     hash_obj = hashlib.sha256(tile_source.encode())
