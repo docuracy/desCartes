@@ -92,13 +92,17 @@ def create_geotiff(tile_source, output_dir, geotiff_name, bounding_box, zoom):
     x_min, x_max, y_min, y_max = bbox_to_xyz(
         lon_min, lon_max, lat_min, lat_max, zoom)
 
-    print(f"Fetching & georeferencing {(x_max - x_min + 1) * (y_max - y_min + 1)} tiles")
+    total_tiles = (x_max - x_min + 1) * (y_max - y_min + 1)
+    counter = 0
+    print(f"Fetching & georeferencing {total_tiles} tiles")
 
     for x in range(x_min, x_max + 1):
         for y in range(y_min, y_max + 1):
+            counter += 1
             try:
                 png_path = fetch_tile(x, y, zoom, tile_source, cache_dir)
-                print(f"{x},{y} {'found in cache.' if cache_dir in png_path else 'fetched from tileserver.'}")
+                percent_done = counter / total_tiles * 100
+                print(f"{percent_done:.1f}% : {x},{y} {'found in cache.' if cache_dir in png_path else 'fetched from tileserver.'}", end='\r')
                 georeference_raster_tile(x, y, zoom, png_path)
             except OSError:
                 print(f"Error, failed to get {x},{y}")
