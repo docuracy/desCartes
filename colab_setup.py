@@ -9,7 +9,7 @@ subprocess.run(['conda', 'install', '-q', '-c', 'ilastik-forge', 'vigra', 'z5py'
 if not os.path.exists('./data'):
     os.makedirs('./data')
 
-subprocess.run(['wget' '-q' 'https://descartes.docuracy.co.uk/ilastik/desCartes_preprocess.ilp' '-P' './data'])
+subprocess.run(['wget', '-q', 'https://descartes.docuracy.co.uk/ilastik/desCartes_preprocess.ilp', '-P', './data'])
 
 # Install ilastik
 subprocess.run(['wget', 'https://files.ilastik.org/ilastik-1.4.0-Linux.tar.bz2'])
