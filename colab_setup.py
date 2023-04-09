@@ -2,12 +2,6 @@ import subprocess
 import os
 import sys
 
-subprocess.run(['pip', 'install', '-q', 'ipyleaflet', 'pyproj', 'condacolab'])
-
-# Import and install condacolab - IGNORE ANY WARNING ABOUT CRASHED KERNEL
-import condacolab
-condacolab.install()
-
 subprocess.run(['conda', 'config', '--prepend', 'channels', 'conda-forge'])
 subprocess.run(['conda', 'config', '--prepend', 'channels', 'ilastik-forge'])
 subprocess.run(['conda', 'install', '-q', '-c', 'ilastik-forge', 'vigra', 'z5py', 'ndstructs', 'fastfilters', 'git'])
