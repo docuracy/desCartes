@@ -9,10 +9,13 @@ subprocess.run(['conda', 'install', '-q', '-c', 'ilastik-forge', 'vigra', 'z5py'
 if not os.path.exists('./data'):
     os.makedirs('./data')
 
-subprocess.run(['wget', '-q', 'https://descartes.docuracy.co.uk/ilastik/pixel_classification.ilp', '-P', './data'])
-subprocess.run(['wget', '-q', 'https://descartes.docuracy.co.uk/ilastik/object_classification.ilp', '-P', './data'])
-subprocess.run(['wget', '-q', 'https://descartes.docuracy.co.uk/ilastik/boundary_segmentation.ilp', '-P', './data'])
-subprocess.run(['wget', '-q', 'https://descartes.docuracy.co.uk/ilastik/segmentation_classification.ilp', '-P', './data'])
+subprocess.run(['wget', '-q', 'https://descartes.docuracy.co.uk/ilastik/cascaded_boundary_segmentation.ilp', '-P', './data'])
+subprocess.run(['wget', '-q', 'https://descartes.docuracy.co.uk/ilastik/cascaded_pixel_classification.ilp', '-P', './data'])
+subprocess.run(['wget', '-q', 'https://descartes.docuracy.co.uk/ilastik/cascaded_segmentation_classification.ilp', '-P', './data'])
+# subprocess.run(['wget', '-q', 'https://descartes.docuracy.co.uk/ilastik/pixel_classification.ilp', '-P', './data'])
+# subprocess.run(['wget', '-q', 'https://descartes.docuracy.co.uk/ilastik/object_classification.ilp', '-P', './data'])
+# subprocess.run(['wget', '-q', 'https://descartes.docuracy.co.uk/ilastik/boundary_segmentation.ilp', '-P', './data'])
+# subprocess.run(['wget', '-q', 'https://descartes.docuracy.co.uk/ilastik/segmentation_classification.ilp', '-P', './data'])
 
 # Install ilastik
 subprocess.run(['wget', 'https://files.ilastik.org/ilastik-1.4.0-Linux.tar.bz2'])
