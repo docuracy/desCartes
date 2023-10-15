@@ -9,8 +9,8 @@ with associated annotations. It can be configured for various map preprocessing
 steps and is designed for use in geographic information system (GIS) workflows,
 and to produce training and test data for machine-learning processes.
  
-The script leverages libraries such as GDAL, GeoPandas, Rasterio, and Shapely for 
-efficient map processing.
+The script leverages libraries such as GDAL, GeoPandas, and Shapely for efficient 
+map processing.
 
 Key Functions:
 
@@ -23,24 +23,26 @@ Key Functions:
   and desired tile size.
 
 - split_map(map_path, cropped_labels_gdf, tile_directory, tile_size, min_overlap, region_name, annotated):
-  Split the map into smaller tiles and associated .npy annotations. The script takes 
+  Split the map into smaller tiles and associated GeoJSON annotations. The script takes 
   care of the transformation, cropping, and saving of the tiles and annotations.
 
 '''
-!pip install rasterio # Used in Colab
+#!pip install rasterio # Required for Colab
 
 from osgeo import gdal, ogr, osr
 from shapely.geometry import mapping, LineString, box, shape
 import geopandas as gpd
+from affine import Affine
 import rasterio.features
 import rasterio.enums
 import os
 import math
 import numpy as np
+import json
 
 def preprocess_map(map_path):
     # Implement preprocessing steps here
-    # For example, removing colored pixels, histogram equalization, etc.
+    # For example, removing coloured pixels, histogram equalisation, etc.
     pass
             
 def calculate_overlaps(map, tile_size, min_overlap):
@@ -82,7 +84,7 @@ def split_map(map_path, cropped_labels_gdf, tile_directory, tile_size, min_overl
 
         # Sort the shapes in descending order of 'type' value (primary roads drawn last)
         shapes.sort(key=lambda x: x[1], reverse=True)
-        
+
         # Use rasterio.features.rasterize with the sorted shapes list
         label_image = rasterio.features.rasterize(
             shapes=shapes,
@@ -101,7 +103,7 @@ def split_map(map_path, cropped_labels_gdf, tile_directory, tile_size, min_overl
             x = round(x_loop * (tile_size - horizontal_overlap))
             y = round(y_loop * (tile_size - vertical_overlap))
 
-            print(f"x: {x}-{x+tile_size-1}, y: {y}-{y+tile_size-1}")
+            # print(f"x: {x}-{x+tile_size-1}, y: {y}-{y+tile_size-1}")
             tile_name = f"{tile_directory}{region_name}_{x}_{y}.jpg"
             gdal.Translate(tile_name, map, srcWin=[x, y, tile_size, tile_size])
 
