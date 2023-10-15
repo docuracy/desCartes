@@ -28,7 +28,7 @@ Key Functions:
 '''
 
 from osgeo import gdal, ogr, osr
-from shapely.geometry import mapping, LineString
+from shapely.geometry import mapping, LineString, box
 import geopandas as gpd
 import os
 import math
