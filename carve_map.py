@@ -41,8 +41,8 @@ import numpy as np
 import json
 
 def preprocess_map(map_path):
-    # Implement preprocessing steps here
-    # For example, removing coloured pixels, histogram equalisation, etc.
+    # Implement any preprocessing steps for the map, such as removing coloured pixels, 
+    # histogram equalization, etc. Could use Ilastik pixel classification model.
     pass
             
 def calculate_overlaps(map, tile_size, min_overlap):
