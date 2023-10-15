@@ -32,13 +32,11 @@ Key Functions:
 from osgeo import gdal, ogr, osr
 from shapely.geometry import mapping, LineString, box, shape
 import geopandas as gpd
-from affine import Affine
 import rasterio.features
 import rasterio.enums
 import os
 import math
 import numpy as np
-import json
 
 def preprocess_map(map_path):
     # Implement preprocessing steps here
