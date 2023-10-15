@@ -9,8 +9,8 @@ with associated annotations. It can be configured for various map preprocessing
 steps and is designed for use in geographic information system (GIS) workflows,
 and to produce training and test data for machine-learning processes.
  
-The script leverages libraries such as GDAL, GeoPandas, and Shapely for efficient 
-map processing.
+The script leverages libraries such as GDAL, GeoPandas, Rasterio, and Shapely for 
+efficient map processing.
 
 Key Functions:
 
@@ -23,7 +23,7 @@ Key Functions:
   and desired tile size.
 
 - split_map(map_path, cropped_labels_gdf, tile_directory, tile_size, min_overlap, region_name, annotated):
-  Split the map into smaller tiles and associated GeoJSON annotations. The script takes 
+  Split the map into smaller tiles and associated .npy annotations. The script takes 
   care of the transformation, cropping, and saving of the tiles and annotations.
 
 '''
