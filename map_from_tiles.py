@@ -69,7 +69,7 @@ def tile_edges(x, y, z):
     return[lon1, lat1, lon2, lat2]
 
 
-def fetch_tile(x, y, z, tile_source, cache_dir):
+def fetch_tile(x, y, z, tile_source, cache_dir, temp_dir):
 
     cache_path = f'{cache_dir}/{x}_{y}_{z}.jpg'
     if os.path.exists(cache_path):
@@ -100,7 +100,7 @@ def fetch_tile(x, y, z, tile_source, cache_dir):
         f.write(g.read())
     return path
 
-def merge_tiles(input_pattern, output_path, extent, crs):
+def merge_tiles(input_pattern, output_path, extent, crs, temp_dir):
     vrt_path = os.path.join(temp_dir, "tiles.vrt")
     gdal.BuildVRT(vrt_path, glob.glob(input_pattern))
     print(f'Projecting {extent} to {crs}')
@@ -109,7 +109,7 @@ def merge_tiles(input_pattern, output_path, extent, crs):
     #gdal.Translate(output_path, vrt_path, outputSRS=crs, projWin=[extent[0], extent[3], extent[2], extent[1]], format='PNG', creationOptions=['COMPRESS=DEFLATE', 'ZLEVEL=9'])
     #gdal.Translate(output_path, vrt_path, outputSRS=crs, projWin=[extent[0], extent[3], extent[2], extent[1]], format='GTiff')
 
-def georeference_raster_tile(x, y, z, path, crs):
+def georeference_raster_tile(x, y, z, path, crs, temp_dir):
     bounds = tile_edges(x, y, z)
 
     # Create the projection transformer and transform from EPSG:4326
@@ -171,10 +171,10 @@ def create_map(tile_source, output_dir, map_name, bounding_box, zoom, crs, temp_
         for y in range(y_min, y_max + 1):
             counter += 1
             try:
-                png_path = fetch_tile(x, y, zoom, tile_source, cache_dir)
+                png_path = fetch_tile(x, y, zoom, tile_source, cache_dir, temp_dir)
                 percent_done = counter / total_tiles * 100
                 print(f"{percent_done:.1f}% : {x},{y} {'found in cache.' if cache_dir in png_path else 'fetched from tileserver.'}", end='\r')
-                georeference_raster_tile(x, y, zoom, png_path, crs)
+                georeference_raster_tile(x, y, zoom, png_path, crs, temp_dir)
             except OSError:
                 print(f"Error, failed to get {x},{y}")
                 pass
@@ -183,7 +183,7 @@ def create_map(tile_source, output_dir, map_name, bounding_box, zoom, crs, temp_
 
     print("Merging tiles ...")
     filename = os.path.join(output_dir, map_name)
-    merge_tiles(os.path.join(temp_dir, '*.jpeg'), filename, bounding_box_original, crs)
+    merge_tiles(os.path.join(temp_dir, '*.jpeg'), filename, bounding_box_original, crs, temp_dir)
     print("... complete")
 
     # Move any downloaded files to the cache folder
