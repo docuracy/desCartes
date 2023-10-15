@@ -16,7 +16,7 @@ Key Functions:
 
 - preprocess_map(map_path):
   Implement any preprocessing steps for the map, such as removing coloured pixels, 
-  histogram equalization, etc.
+  histogram equalization, etc. Could use Ilastik pixel classification model.
 
 - calculate_overlaps(map, tile_size, min_overlap):
   Calculate the number of tiles, horizontal and vertical overlaps based on map size 
