@@ -1,3 +1,4 @@
+#@title Carve Map
 '''
 carve_map.py
 
@@ -26,10 +27,14 @@ Key Functions:
   care of the transformation, cropping, and saving of the tiles and annotations.
 
 '''
+!pip install rasterio # Used in Colab
 
 from osgeo import gdal, ogr, osr
-from shapely.geometry import mapping, LineString, box
+from shapely.geometry import mapping, LineString, box, shape
 import geopandas as gpd
+from affine import Affine
+import rasterio.features
+import rasterio.enums
 import os
 import math
 import numpy as np
@@ -57,14 +62,9 @@ def transform_coordinates_to_image(geometry, transform):
         x_image = round((coord[0] - transform[0]) / transform[1])
         y_image = round((coord[1] - transform[3]) / transform[5])
         transformed_coords.append((x_image, y_image))
-    return LineString(transformed_coords)
+    return LineString(transformed_coords)    
   
 def split_map(map_path, cropped_labels_gdf, tile_directory, tile_size, min_overlap, region_name, annotated):
-
-    empty_geojson = {
-        "type": "FeatureCollection",
-        "features": []
-    }
 
     map = gdal.Open(map_path)
     map_width, map_height = map.RasterXSize, map.RasterYSize
@@ -72,47 +72,43 @@ def split_map(map_path, cropped_labels_gdf, tile_directory, tile_size, min_overl
 
     print(f"map_width: {map_width}, map_height: {map_height}, horizontal_overlap: {horizontal_overlap}, vertical_overlap: {vertical_overlap}")
 
-    transform = map.GetGeoTransform()  # Get the geotransformation matrix
-    x_origin = transform[0]
-    y_origin = transform[3]
-    pixel_width = transform[1]
-    pixel_height = transform[5]
+    if annotated is True:
+
+        transform = map.GetGeoTransform()  # Get the geotransformation matrix
+        
+        # Collect shapes
+        shapes = []
+        for index, row in cropped_labels_gdf.iterrows():
+            row['geometry'] = transform_coordinates_to_image(row['geometry'], transform)
+            shapes.append((row['geometry'], row['type']))
+
+        # Sort the shapes in descending order of 'type' value (primary roads drawn last)
+        shapes.sort(key=lambda x: x[1], reverse=True)
+        
+        # Use rasterio.features.rasterize with the sorted shapes list
+        label_image = rasterio.features.rasterize(
+            shapes=shapes,
+            out_shape=(map_height, map_width),
+            fill=0,
+            all_touched=True,
+            merge_alg=rasterio.enums.MergeAlg.replace,
+            dtype=np.uint8
+        )
+
+        np.save(f"{map_path}.npy", label_image)
 
     for x_loop in range(0, horizontal_count):
-      for y_loop in range(0, vertical_count):
+        for y_loop in range(0, vertical_count):
 
             x = round(x_loop * (tile_size - horizontal_overlap))
             y = round(y_loop * (tile_size - vertical_overlap))
 
-            print(f"x: {x}-{x+tile_size}, y: {y}-{y+tile_size}")
+            print(f"x: {x}-{x+tile_size-1}, y: {y}-{y+tile_size-1}")
             tile_name = f"{tile_directory}{region_name}_{x}_{y}.jpg"
             gdal.Translate(tile_name, map, srcWin=[x, y, tile_size, tile_size])
 
             if annotated is True:
-                tile_geojson_path = f"{tile_directory}{region_name}_{x}_{y}.geojson"
-                # Calculate the extent in map coordinates
-                tile_extent = box(
-                    x_origin + x * pixel_width,
-                    y_origin + y * pixel_height,
-                    x_origin + (x + tile_size) * pixel_width,
-                    y_origin + (y + tile_size) * pixel_height
-                )
-                # Use the extent_geometry to crop 'cropped_labels_gdf' (intersection method does not trim overlapping parts)
-                cropped_tile_gdf = gpd.clip(cropped_labels_gdf, tile_extent)
-                cropped_tile_gdf = cropped_tile_gdf[~cropped_tile_gdf.is_empty]
-                cropped_tile_gdf = cropped_tile_gdf.explode(index_parts=True)  # Cropping can cause creation of multiparts
-
-                if not cropped_tile_gdf.empty:
-                    # Transform the coordinates of the cropped_tile_gdf to the image's coordinate system
-                    for index, row in cropped_tile_gdf.iterrows():
-                        geom = row.geometry
-                        geom = transform_coordinates_to_image(geom, transform)
-                        cropped_tile_gdf.at[index, 'geometry'] = geom
-
-                    # Save the transformed GeoJSON
-                    cropped_tile_gdf.crs = None
-                    cropped_tile_gdf.to_file(tile_geojson_path, driver='GeoJSON')
-
-                else:
-                    with open(tile_geojson_path, 'w') as json_file:
-                        json.dump(empty_geojson, json_file)
+                # Create a road image for the current tile
+                label_tile = label_image[y:y + tile_size, x:x + tile_size]
+                label_tile_path = f"{tile_directory}{region_name}_{x}_{y}.npy"
+                np.save(label_tile_path, label_tile)
