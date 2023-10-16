@@ -95,8 +95,9 @@ def split_map(map_path, cropped_labels_gdf, tile_directory, tile_size, min_overl
             dtype=np.uint8
         )
         
-        num_classes = np.max(label_image) + 1 # Allows for fill (zero) and road classes 1 or greater
-        np.save(f"{map_path}.npy", np.eye(num_classes)[label_image]) # One-hot encode the label image
+        num_classes = 5 # Allows for fill (zero) and road classes 1 to 4
+        label_image = np.eye(num_classes)[label_image] # One-hot encode the label image
+        np.save(f"{map_path}.npy", label_image) 
 
     for x_loop in range(0, horizontal_count):
         for y_loop in range(0, vertical_count):
