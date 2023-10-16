@@ -16,7 +16,7 @@ Key Functions:
 
 - preprocess_map(map_path):
   Implement any preprocessing steps for the map, such as removing coloured pixels, 
-  histogram equalization, etc. Could use Ilastik pixel classification model.
+  histogram equalization, etc.
 
 - calculate_overlaps(map, tile_size, min_overlap):
   Calculate the number of tiles, horizontal and vertical overlaps based on map size 
@@ -41,8 +41,8 @@ import numpy as np
 import json
 
 def preprocess_map(map_path):
-    # Implement any preprocessing steps for the map, such as removing coloured pixels, 
-    # histogram equalization, etc. Could use Ilastik pixel classification model.
+    # Implement preprocessing steps here
+    # For example, removing coloured pixels, histogram equalisation, etc.
     pass
             
 def calculate_overlaps(map, tile_size, min_overlap):
@@ -94,8 +94,9 @@ def split_map(map_path, cropped_labels_gdf, tile_directory, tile_size, min_overl
             merge_alg=rasterio.enums.MergeAlg.replace,
             dtype=np.uint8
         )
-
-        np.save(f"{map_path}.npy", label_image)
+        
+        num_classes = np.max(label_image) # Allows for fill (zero) and road classes 1 or greater 
+        np.save(f"{map_path}.npy", np.eye(num_classes)[label_image]) # One-hot encode the label image
 
     for x_loop in range(0, horizontal_count):
         for y_loop in range(0, vertical_count):
