@@ -39,11 +39,6 @@ import os
 import math
 import numpy as np
 import json
-
-def preprocess_map(map_path):
-    # Implement preprocessing steps here
-    # For example, removing coloured pixels, histogram equalisation, etc.
-    pass
             
 def calculate_overlaps(map, tile_size, min_overlap):
     map_width, map_height = map.RasterXSize, map.RasterYSize
@@ -98,7 +93,10 @@ def split_map(map_path, cropped_labels_gdf, tile_directory, tile_size, min_overl
         num_classes = 5 # Allows for fill (zero) and road classes 1 to 4
         label_image = np.eye(num_classes)[label_image] # One-hot encode the label image
         label_image = label_image.astype(bool) # Convert to boolean
-        np.save(f"{map_path}.npy", label_image) 
+        np.save(f"{map_path}.label.npy", label_image) 
+        
+        # Load preprocessed map image
+        preprocessed = np.load(f"{map_path}.preprocessed.npy")        
 
     for x_loop in range(0, horizontal_count):
         for y_loop in range(0, vertical_count):
@@ -113,5 +111,9 @@ def split_map(map_path, cropped_labels_gdf, tile_directory, tile_size, min_overl
             if annotated is True:
                 # Create a road image for the current tile
                 label_tile = label_image[y:y + tile_size, x:x + tile_size]
-                label_tile_path = f"{tile_directory}{region_name}_{x}_{y}.npy"
+                label_tile_path = f"{tile_directory}{region_name}_{x}_{y}.label.npy"
                 np.save(label_tile_path, label_tile)
+                # Create a preprocessed map image for the current tile
+                preprocessed_tile = preprocessed[y:y + tile_size, x:x + tile_size]
+                preprocessed_tile_path = f"{tile_directory}{region_name}_{x}_{y}.preprocessed.npy"
+                np.save(preprocessed_tile_path, preprocessed_tile)
